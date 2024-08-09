@@ -1,0 +1,17 @@
+{
+  "name": "puppeteer-server",
+  "version": "1.0.0",
+  "description": "Server to run Puppeteer scripts",
+  "main": "puppeteer-script.js",
+  "scripts": {
+    "start": "node puppeteer-script.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "puppeteer": "^22.15.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
