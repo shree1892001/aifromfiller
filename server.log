@@ -44,3 +44,37 @@ For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides
 [2024-08-12T06:44:29.804Z] Login successful.
 [2024-08-12T06:44:29.836Z] Adding name failed: Couldn't find name field or submit button
 [2024-08-12T06:45:29.861Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-12T08:17:03.377Z] Data fetched from API successfully.
+[2024-08-12T08:17:23.509Z] Login page loaded.
+[2024-08-12T08:17:30.050Z] Login successful.
+[2024-08-12T08:17:59.394Z] Name added and continue button clicked.
+[2024-08-12T08:18:30.205Z] Filling the next page failed: Navigating frame was detached
+[2024-08-12T08:18:30.229Z] Error running Puppeteer: Attempted to use detached Frame 'CA9345A037CFD45B7663CDEE3A33FB6A'.
+[2024-08-12T08:40:58.137Z] Error running Puppeteer: Request failed with status code 500
+[2024-08-12T08:42:10.090Z] Data fetched from API successfully.
+[2024-08-12T08:42:24.986Z] Login page loaded.
+[2024-08-12T08:42:33.598Z] Login successful.
+[2024-08-12T08:43:03.193Z] Name added and continue button clicked.
+[2024-08-12T08:45:03.239Z] Filling the next page failed: Navigation timeout of 120000 ms exceeded
+[2024-08-12T08:46:03.295Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-12T09:30:10.317Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:30:42.918Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:30:44.355Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:31:23.099Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:39:59.474Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:43:12.693Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:44:24.099Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:44:30.936Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T09:48:05.923Z] Data fetched from API successfully.
+[2024-08-12T09:48:20.371Z] Login page loaded.
+[2024-08-12T09:48:27.296Z] Login successful.
+[2024-08-12T09:48:53.977Z] Name added and continue button clicked.
+[2024-08-12T09:50:54.019Z] Filling the next page failed: Navigation timeout of 120000 ms exceeded
+[2024-08-12T09:51:54.045Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-12T09:59:30.198Z] Error running Puppeteer: connect ECONNREFUSED 192.168.1.31:3001
+[2024-08-12T11:34:26.397Z] Data fetched from API successfully.
+[2024-08-12T11:34:41.784Z] Login page loaded.
+[2024-08-12T11:34:49.081Z] Login successful.
+[2024-08-12T11:35:18.167Z] Name added and continue button clicked.
+[2024-08-12T11:35:36.033Z] Filling the next page failed: Navigating frame was detached
+[2024-08-12T11:35:36.055Z] Error running Puppeteer: Attempted to use detached Frame 'FCA5342DFD93D6F39789EDA22C06BBBC'.

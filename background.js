@@ -1,12 +1,12 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.command === 'runPuppeteerScript') {
+    if (message.command === 'runpuppeteerScript') {
         runPuppeteerScript();
     }
 });
 
 async function runPuppeteerScript() {
     try {
-        const response = await fetch('http://localhost:3001/get-data',{
+        const response = await fetch('http://192.168.1.31:3001/get-data',{
                      method:'GET',
                      headers: {
                         'Content-Type': 'application/json'
@@ -16,7 +16,7 @@ async function runPuppeteerScript() {
         });
         const jsonData = await response.json();
 
-        const scriptResponse = await fetch('http://localhost:3000/run-puppeteer', {
+        const scriptResponse = await fetch('http://192.168.1.31:3000/run-puppeteer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

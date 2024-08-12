@@ -16,7 +16,7 @@
         "default_popup": "popup.html"
         
     },
-    "host_permissions":["http://localhost:3000/*", "http://192.168.1.17:3000/*","http://localhost:3001/*","http://192.168.1.17:3001/*"]
+    "host_permissions":["http://localhost:3000/*", "http://192.168.1.1:3000/*","http://localhost:3001/*","http://192.168.1.1:3001/*","http://192.168.1.31:3001/*","http://192.168.1.31:3000/*"]
    
 }
 

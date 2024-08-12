@@ -300,7 +300,7 @@ puppeteer.use(StealthPlugin());
 
 const app = express();
 const port = 3000;
-const apiEndpoint = 'http://192.168.1.17:3000/run-puppeteer'; // Adjust this if needed
+const apiEndpoint = 'http://192.168.1.1:3000/run-puppeteer'; // Adjust this if needed
 
 app.use(bodyParser.json());
 app.use(cors({
@@ -322,7 +322,7 @@ app.use(bodyParser.json());
 // Function to run Puppeteer script
 async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     try {
-        const response = await axios.get('http://localhost:3001/get-data');
+        const response = await axios.get('http://192.168.1.31:3001/get-data');
         const jsonData = response.data;
         log('Data fetched from API successfully.');
 
@@ -609,6 +609,6 @@ async function retry(fn, retries = 3) {
 }
 
 app.listen(port, () => {
-    console.log(`Server listening at http://192.168.1.17:${port}`);
+    console.log(`Server listening at http://192.168.1.31:${port}`);
 });
 
