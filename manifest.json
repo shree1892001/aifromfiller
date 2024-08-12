@@ -1,23 +1,25 @@
 {
     "manifest_version": 3,
-    "name": "Dynamic Data Form Filler",
+    "name": "Puppeteer Automation Extension",
     "version": "1.0",
-    "description": "A Chrome extension to fill form fields with dynamic data fetched from a Puppeteer server.",
+    "description": "Trigger Puppeteer scripts from a Chrome extension.",
     "permissions": [
-      "activeTab",
-      "scripting"
-    ],
-    "host_permissions": [
-      "http://*/*",
-      "https://*/*"
+        "storage",
+        "activeTab",
+        "scripting"
+        
     ],
     "background": {
-      "service_worker": "background.js"
+        "service_worker": "background.js"
     },
     "action": {
-      "default_popup": "popup.html"
-     
-    }
+        "default_popup": "popup.html"
+        
+    },
+    "host_permissions":["http://localhost:3000/*", "http://192.168.1.17:3000/*","http://localhost:3001/*","http://192.168.1.17:3001/*"]
    
-  }
-  
+}
+
+
+
+

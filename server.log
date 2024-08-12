@@ -1,0 +1,46 @@
+[2024-08-11T09:08:24.185Z] Server started.
+[2024-08-11T09:36:54.122Z] Error running Puppeteer: 
+[2024-08-11T09:36:56.843Z] Error running Puppeteer: 
+[2024-08-11T10:11:17.002Z] Server started.
+[2024-08-11T10:18:30.166Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:18:32.760Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:18:33.913Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:18:34.119Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:19:17.226Z] Server started.
+[2024-08-11T10:20:00.810Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:20:33.243Z] Server started.
+[2024-08-11T10:20:39.904Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:20:51.673Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:29:09.444Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:29:10.655Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:29:10.815Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:29:10.975Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:29:11.192Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:30:22.369Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:30:23.700Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:30:23.868Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:30:24.019Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T10:30:24.247Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-11T11:07:27.457Z] Server started.
+[2024-08-11T11:20:42.281Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T05:05:40.820Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T05:30:38.635Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T05:32:59.583Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T05:33:33.948Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T05:36:29.128Z] Error running Puppeteer: Request failed with status code 400
+[2024-08-12T06:37:09.793Z] Error running Puppeteer: Request failed with status code 404
+[2024-08-12T06:40:43.612Z] Data fetched from API successfully.
+[2024-08-12T06:40:44.096Z] Error running Puppeteer: Could not find Chrome (ver. 127.0.6533.88). This can occur if either
+ 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+ 2. your cache path is incorrectly configured (which is: C:\Users\admin\.cache\puppeteer).
+For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
+[2024-08-12T06:41:47.621Z] Data fetched from API successfully.
+[2024-08-12T06:41:47.630Z] Error running Puppeteer: Could not find Chrome (ver. 127.0.6533.88). This can occur if either
+ 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+ 2. your cache path is incorrectly configured (which is: C:\Users\admin\.cache\puppeteer).
+For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
+[2024-08-12T06:44:03.891Z] Data fetched from API successfully.
+[2024-08-12T06:44:19.725Z] Login page loaded.
+[2024-08-12T06:44:29.804Z] Login successful.
+[2024-08-12T06:44:29.836Z] Adding name failed: Couldn't find name field or submit button
+[2024-08-12T06:45:29.861Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded

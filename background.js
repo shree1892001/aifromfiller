@@ -1,23 +1,35 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.command === 'runAutomation') {
-        fetch('http://localhost:3000/run-puppeteer', {
+    if (message.command === 'runPuppeteerScript') {
+        runPuppeteerScript();
+    }
+});
+
+async function runPuppeteerScript() {
+    try {
+        const response = await fetch('http://localhost:3001/get-data',{
+                     method:'GET',
+                     headers: {
+                        'Content-Type': 'application/json'
+                    },
+
+
+        });
+        const jsonData = await response.json();
+
+        const scriptResponse = await fetch('http://localhost:3000/run-puppeteer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(message.data)
-        })
-        .then(response => response.text())
-        .then(result => {
-            console.log('Background script: Success:', result);
-            sendResponse({ status: 'success', result });
-        })
-        .catch(error => {
-            console.error('Background script: Error:', error);
-            sendResponse({ status: 'error', message: error.message });
+            body: JSON.stringify({ requestPayload: jsonData })
         });
 
-        // Indicate that the response will be sent asynchronously
-        return true;
+        if (scriptResponse.ok) {
+            console.log('Puppeteer script executed successfully.');
+        } else {
+            console.error('Failed to execute Puppeteer script.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
     }
-});
+}
