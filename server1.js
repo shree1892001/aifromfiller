@@ -293,9 +293,10 @@ async function addData(page, data) {
             if (!nameField || !submitButton) {
                 throw new Error("Couldn't find name field or submit button");
             }
-            nameField.value = data.nameField;
-            if (nameField.value !== "50505jar llc") {
-                throw new Error(`The value for the entity name is incorrect. It should be 50505jar llc`);
+            nameField.value = data.Payload.Name.Legal_Name;
+            nameField.value=nameField.value+" LLC"
+            if (nameField.value !== "Redberyltech LLC") {
+                throw new Error(`The value for the entity name is incorrect. It should be RedBerylTech LLC`);
             }
 
 
@@ -344,7 +345,7 @@ async function fillNextPage(page, data) {
                 radioButtons[0].checked = true;
             }
 
-            document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.nameField;
+            document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" LLC";
             document.querySelector('#P4_COUNTY').value = "4";
 
             const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
@@ -408,49 +409,53 @@ async function fillNextPage(page, data) {
             const opt2 = document.querySelector("input#P4_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.sop.name;
-                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.sop.addr1;
-                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.sop.addr2;
-                document.querySelector('input[name="P4_SOP_CITY"]').value = data.sop.city;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.sop.postal_code;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.Address_Line1;
+                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.Address_Line2;
+                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.City;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.Postal_Code;
             } else if (opt2 && opt2.checked) {
                 const serviceCompanySelect = document.querySelector("#P4_SOP_SERVICE_COMPANY");
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.sop.name;
-                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.sop.addr1;
-                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.sop.addr2;
-                document.querySelector('input[name="P4_SOP_CITY"]').value = data.sop.city;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.sop.postal_code;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.Address_Line1;
+                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.Address_Line2;
+                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.City;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.Postal_Code;
             }
 
-            const agentOpt1 = document.querySelector("input#P4_AGENT_ADDR_OPTION_0");
-            const agentOpt2 = document.querySelector("input#P4_AGENT_ADDR_OPTION_1");
+            const agentOpt1 = document.querySelector("input#P4_RA_ADDR_OPTION_0");
+            const agentOpt2 = document.querySelector("input#P4_RA_ADDR_OPTION_1");
 
-            if (agentOpt1 && agentOpt1.checked) {
-                document.querySelector('input[name="P4_AGENT_NAME"]').value = data.registeredAgent.name;
-                document.querySelector('input[name="P4_AGENT_ADDR1"]').value = data.registeredAgent.addr1;
-                document.querySelector('input[name="P4_AGENT_ADDR2"]').value = data.registeredAgent.addr2;
-                document.querySelector('input[name="P4_AGENT_CITY"]').value = data.registeredAgent.city;
-                document.querySelector('input[name="P4_AGENT_POSTAL_CODE"]').value = data.registeredAgent.postal_code;
+            if (data.Payload.Registered_Agent) {
+                const check=document.querySelector('#P4_RA_OPTION_0')
+                check.click()
+                if(agentOpt1 && agentOpt1.checked){
+                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.Name;
+                document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.Address_Line1;
+                document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.Address_Line2;
+                document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.City;
+                document.querySelector('input[name="P4_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P4_AGENT_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
                     registeredAgentSelect.value = "440";
                 }
             }
+        }
 
-            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.organizer.name;
-            document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.organizer.addr1;
-            document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.organizer.city;
-            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.organizer.postal_code;
-            document.querySelector('input[name="P4_SIGNATURE"]').value = data.organizer.signature;
+            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Name;
+            document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Address.Address_Line1;
+            document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Address.City;
+            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Address.Postal_Code;
+            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Signature;
 
-            document.querySelector('#P4_FILER_NAME').value = data.filer.name;
-            document.querySelector('#P4_FILER_ADDR1').value = data.filer.addr1;
-            document.querySelector('input[name="P4_FILER_CITY"]').value = data.filer.city;
-            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.filer.postal_code;
+            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Name;
+            document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Address.Address_Line1;
+            document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Address.City;
+            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Address.Postal_Code;
 
         }, data);
 

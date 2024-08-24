@@ -157,3 +157,181 @@ For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides
 [2024-08-22T08:49:05.835Z] Next step completed and preview loaded.
 [2024-08-22T08:50:58.722Z] Data fetched from API successfully.
 [2024-08-22T08:51:01.413Z] Error running Puppeteer: Attempted to use detached Frame '6C9A50DD3A648E978B0562D20D6928DB'.
+[2024-08-23T06:34:37.549Z] Data fetched from API successfully.
+[2024-08-23T06:34:52.957Z] Login page loaded.
+[2024-08-23T06:35:01.414Z] Login successful.
+[2024-08-23T06:35:01.436Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T06:35:41.469Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-23T06:38:51.779Z] Data fetched from API successfully.
+[2024-08-23T06:39:07.802Z] Login page loaded.
+[2024-08-23T06:39:15.933Z] Login successful.
+[2024-08-23T06:39:15.938Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T06:40:46.641Z] Data fetched from API successfully.
+[2024-08-23T06:40:59.943Z] Login page loaded.
+[2024-08-23T06:41:05.799Z] Login successful.
+[2024-08-23T06:41:05.804Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T06:41:35.028Z] Name added and continue button clicked.
+[2024-08-23T06:42:35.226Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T06:45:47.210Z] Data fetched from API successfully.
+[2024-08-23T06:46:07.583Z] Login page loaded.
+[2024-08-23T06:46:14.974Z] Login successful.
+[2024-08-23T06:46:14.979Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T06:46:56.150Z] Name added and continue button clicked.
+[2024-08-23T06:47:56.369Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T06:58:00.892Z] Data fetched from API successfully.
+[2024-08-23T06:58:16.874Z] Login page loaded.
+[2024-08-23T06:58:24.349Z] Login successful.
+[2024-08-23T06:58:24.355Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T06:58:56.875Z] Name added and continue button clicked.
+[2024-08-23T06:59:57.108Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T07:06:07.526Z] Data fetched from API successfully.
+[2024-08-23T07:06:22.943Z] Login page loaded.
+[2024-08-23T07:06:29.302Z] Login successful.
+[2024-08-23T07:06:29.307Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T07:06:57.190Z] Name added and continue button clicked.
+[2024-08-23T07:07:57.446Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T07:14:24.957Z] Data fetched from API successfully.
+[2024-08-23T07:14:41.683Z] Login page loaded.
+[2024-08-23T07:14:48.540Z] Login successful.
+[2024-08-23T07:14:48.545Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T07:15:20.586Z] Name added and continue button clicked.
+[2024-08-23T07:15:22.381Z] Next step completed and preview loaded.
+[2024-08-23T08:39:52.368Z] Data fetched from API successfully.
+[2024-08-23T08:40:07.297Z] Login page loaded.
+[2024-08-23T08:40:14.205Z] Login successful.
+[2024-08-23T08:40:14.223Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T08:40:41.904Z] Name added and continue button clicked.
+[2024-08-23T08:40:44.737Z] Next step completed and preview loaded.
+[2024-08-23T08:44:49.826Z] Data fetched from API successfully.
+[2024-08-23T08:45:07.129Z] Login page loaded.
+[2024-08-23T08:45:13.952Z] Login successful.
+[2024-08-23T08:45:13.956Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T08:45:30.596Z] Error running Puppeteer: net::ERR_CONNECTION_RESET at https://filings.dos.ny.gov/ords/corpanc/r/efiling/2?p2_filing_type=DLLC&p2_tra_record_id=&clear=RP,NAME_DETERMINATION,2,22&session=14074324633925
+[2024-08-23T08:46:55.783Z] Data fetched from API successfully.
+[2024-08-23T08:47:09.750Z] Login page loaded.
+[2024-08-23T08:47:14.781Z] Login successful.
+[2024-08-23T08:47:14.786Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T08:47:49.513Z] Name added and continue button clicked.
+[2024-08-23T08:48:58.776Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T08:49:11.160Z] Data fetched from API successfully.
+[2024-08-23T08:49:24.575Z] Login page loaded.
+[2024-08-23T08:49:31.279Z] Login successful.
+[2024-08-23T08:49:31.282Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T08:50:03.032Z] Name added and continue button clicked.
+[2024-08-23T08:50:04.419Z] Next step completed and preview loaded.
+[2024-08-23T09:02:33.417Z] Data fetched from API successfully.
+[2024-08-23T09:02:49.028Z] Login page loaded.
+[2024-08-23T09:02:57.224Z] Login successful.
+[2024-08-23T09:02:57.235Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T09:03:31.988Z] Name added and continue button clicked.
+[2024-08-23T09:03:33.589Z] Next step completed and preview loaded.
+[2024-08-23T09:07:49.711Z] Data fetched from API successfully.
+[2024-08-23T09:08:03.850Z] Login page loaded.
+[2024-08-23T09:08:10.504Z] Login successful.
+[2024-08-23T09:08:10.507Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T09:08:45.023Z] Name added and continue button clicked.
+[2024-08-23T09:09:45.229Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T09:10:39.533Z] Data fetched from API successfully.
+[2024-08-23T09:10:53.479Z] Login page loaded.
+[2024-08-23T09:11:00.760Z] Login successful.
+[2024-08-23T09:11:00.766Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T09:11:34.972Z] Name added and continue button clicked.
+[2024-08-23T09:12:35.180Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T09:13:10.234Z] Data fetched from API successfully.
+[2024-08-23T09:13:24.011Z] Login page loaded.
+[2024-08-23T09:13:29.816Z] Login successful.
+[2024-08-23T09:13:29.821Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T09:13:59.093Z] Name added and continue button clicked.
+[2024-08-23T09:14:59.359Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-23T09:18:37.125Z] Data fetched from API successfully.
+[2024-08-23T09:18:50.971Z] Login page loaded.
+[2024-08-23T09:18:56.795Z] Login successful.
+[2024-08-23T09:18:56.800Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-23T09:19:26.226Z] Name added and continue button clicked.
+[2024-08-23T09:19:27.717Z] Next step completed and preview loaded.
+[2024-08-24T04:51:13.630Z] Data fetched from API successfully.
+[2024-08-24T04:51:28.884Z] Login page loaded.
+[2024-08-24T04:51:36.459Z] Login successful.
+[2024-08-24T04:51:36.474Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T04:52:06.992Z] Name added and continue button clicked.
+[2024-08-24T04:53:07.188Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T04:53:39.849Z] Data fetched from API successfully.
+[2024-08-24T04:53:55.160Z] Login page loaded.
+[2024-08-24T04:54:01.154Z] Login successful.
+[2024-08-24T04:54:01.159Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T04:54:24.735Z] Error running Puppeteer: Attempted to use detached Frame '1082B250BC77FA6D9D8BC826E3E9AC68'.
+[2024-08-24T05:01:35.029Z] Data fetched from API successfully.
+[2024-08-24T05:01:49.155Z] Login page loaded.
+[2024-08-24T05:02:19.271Z] Login successful.
+[2024-08-24T05:02:20.088Z] Error running Puppeteer: Execution context was destroyed, most likely because of a navigation.
+[2024-08-24T05:02:28.006Z] Data fetched from API successfully.
+[2024-08-24T05:02:42.839Z] Login page loaded.
+[2024-08-24T05:02:49.740Z] Login successful.
+[2024-08-24T05:02:49.744Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:03:13.604Z] Error running Puppeteer: Attempted to use detached Frame '4CF038EA8B855F5DF1F49E8ABE9FDE92'.
+[2024-08-24T05:04:50.359Z] Data fetched from API successfully.
+[2024-08-24T05:05:04.285Z] Login page loaded.
+[2024-08-24T05:05:31.951Z] Login failed: Navigating frame was detached
+[2024-08-24T05:05:31.955Z] Error running Puppeteer: Attempted to use detached Frame 'B397FF140B8C21CB441BB5895739274E'.
+[2024-08-24T05:39:21.445Z] Data fetched from API successfully.
+[2024-08-24T05:39:37.048Z] Login page loaded.
+[2024-08-24T05:39:44.742Z] Login successful.
+[2024-08-24T05:39:44.747Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:40:17.626Z] Name added and continue button clicked.
+[2024-08-24T05:40:24.160Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T05:40:57.529Z] Data fetched from API successfully.
+[2024-08-24T05:41:10.206Z] Login page loaded.
+[2024-08-24T05:41:19.073Z] Login successful.
+[2024-08-24T05:41:19.078Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:41:30.213Z] Error running Puppeteer: data is not defined
+[2024-08-24T05:45:30.201Z] Data fetched from API successfully.
+[2024-08-24T05:45:45.272Z] Login page loaded.
+[2024-08-24T05:45:52.572Z] Login successful.
+[2024-08-24T05:45:52.578Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:47:34.200Z] Data fetched from API successfully.
+[2024-08-24T05:47:39.963Z] Error running Puppeteer: Execution context was destroyed
+[2024-08-24T05:47:49.274Z] Login page loaded.
+[2024-08-24T05:47:57.837Z] Login successful.
+[2024-08-24T05:47:57.841Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:51:17.886Z] Data fetched from API successfully.
+[2024-08-24T05:51:33.071Z] Login page loaded.
+[2024-08-24T05:51:39.454Z] Login successful.
+[2024-08-24T05:51:39.459Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:52:10.194Z] Name added and continue button clicked.
+[2024-08-24T05:53:10.324Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T05:55:39.821Z] Data fetched from API successfully.
+[2024-08-24T05:55:54.634Z] Login page loaded.
+[2024-08-24T05:56:01.894Z] Login successful.
+[2024-08-24T05:56:01.898Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T05:56:35.048Z] Name added and continue button clicked.
+[2024-08-24T05:57:35.188Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T06:19:37.436Z] Data fetched from API successfully.
+[2024-08-24T06:19:52.576Z] Login page loaded.
+[2024-08-24T06:20:00.056Z] Login successful.
+[2024-08-24T06:20:00.061Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T06:20:30.814Z] Name added and continue button clicked.
+[2024-08-24T06:21:31.027Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T06:24:49.868Z] Data fetched from API successfully.
+[2024-08-24T06:25:05.317Z] Login page loaded.
+[2024-08-24T06:25:12.443Z] Login successful.
+[2024-08-24T06:25:12.449Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T06:25:48.041Z] Name added and continue button clicked.
+[2024-08-24T06:26:48.301Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T06:27:35.497Z] Data fetched from API successfully.
+[2024-08-24T06:27:51.963Z] Login page loaded.
+[2024-08-24T06:27:58.947Z] Login successful.
+[2024-08-24T06:27:58.970Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T06:28:32.829Z] Name added and continue button clicked.
+[2024-08-24T06:29:33.299Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T06:31:18.206Z] Data fetched from API successfully.
+[2024-08-24T06:31:32.261Z] Login page loaded.
+[2024-08-24T06:31:41.370Z] Login successful.
+[2024-08-24T06:31:41.375Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T06:32:09.007Z] Name added and continue button clicked.
+[2024-08-24T06:33:09.263Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T06:33:56.646Z] Data fetched from API successfully.
+[2024-08-24T06:34:10.868Z] Login page loaded.
+[2024-08-24T06:34:18.661Z] Login successful.
+[2024-08-24T06:34:18.666Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T06:34:46.372Z] Name added and continue button clicked.
+[2024-08-24T06:35:46.644Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
