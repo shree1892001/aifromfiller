@@ -29,24 +29,7 @@ let shouldTriggerAutomation = false;
 const logFilePath = path.join(__dirname, 'server.log');
 const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
-app.get('/events', (req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    });
 
-    const clientId = Date.now();
-    const newClient = {
-        id: clientId,
-        res
-    };
-    clients.push(newClient);
-
-    req.on('close', () => {
-        clients = clients.filter(client => client.id !== clientId);
-    });
-});
 const log = (message) => {
     const timestamp = new Date().toISOString();
     logStream.write(`[${timestamp}] ${message}\n`);
@@ -72,9 +55,7 @@ function sendWebSocketMessage(message) {
 }
 let clients = [];
 
-function sendEventToAll(event) {
-    clients.forEach(client => client.res.write(`data: ${JSON.stringify(event)}\n\n`));
-}
+
 
 
 app.use(bodyParser.json());
