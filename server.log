@@ -335,3 +335,102 @@ For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides
 [2024-08-24T06:34:18.666Z] Login failed: Cannot read properties of null (reading 'click')
 [2024-08-24T06:34:46.372Z] Name added and continue button clicked.
 [2024-08-24T06:35:46.644Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T11:16:06.304Z] Data fetched from API successfully.
+[2024-08-24T11:16:27.021Z] Login page loaded.
+[2024-08-24T11:16:34.622Z] Login successful.
+[2024-08-24T11:16:34.665Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T11:17:59.077Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T11:19:16.376Z] Data fetched from API successfully.
+[2024-08-24T11:19:33.650Z] Login page loaded.
+[2024-08-24T11:19:40.087Z] Login successful.
+[2024-08-24T11:19:40.093Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T11:20:53.203Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T11:30:56.057Z] Data fetched from API successfully.
+[2024-08-24T11:31:13.861Z] Login page loaded.
+[2024-08-24T11:31:17.089Z] Login failed: jsonData is not defined
+[2024-08-24T11:32:17.160Z] Error running Puppeteer: Waiting for selector `ul.t-LinksList` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T11:48:22.035Z] Data fetched from API successfully.
+[2024-08-24T11:48:38.005Z] Login page loaded.
+[2024-08-24T11:48:42.249Z] Login failed: data is not defined
+[2024-08-24T11:49:42.275Z] Error running Puppeteer: Waiting for selector `ul.t-LinksList` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T11:52:53.503Z] Data fetched from API successfully.
+[2024-08-24T11:53:19.100Z] Login failed: Waiting for selector `form` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T11:53:19.204Z] Error running Puppeteer: Execution context was destroyed
+[2024-08-24T11:53:31.717Z] Data fetched from API successfully.
+[2024-08-24T11:55:28.309Z] Data fetched from API successfully.
+[2024-08-24T11:55:43.029Z] Login page loaded.
+[2024-08-24T11:55:50.667Z] Login successful.
+[2024-08-24T11:55:50.671Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T11:56:21.167Z] Name added and continue button clicked.
+[2024-08-24T11:57:21.366Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T12:17:51.870Z] Data fetched from API successfully.
+[2024-08-24T12:18:06.609Z] Login page loaded.
+[2024-08-24T12:18:15.321Z] Login successful.
+[2024-08-24T12:18:15.328Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T12:18:47.059Z] Name added and continue button clicked.
+[2024-08-24T12:19:12.877Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T12:34:28.966Z] Data fetched from API successfully.
+[2024-08-24T12:34:31.332Z] Data fetched from API successfully.
+[2024-08-24T12:34:40.158Z] Error running Puppeteer: Attempted to use detached Frame '1F117EBB664B7B296CDB53C5BB0AB491'.
+[2024-08-24T12:34:45.711Z] Login page loaded.
+[2024-08-24T12:34:54.070Z] Login successful.
+[2024-08-24T12:34:54.073Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T12:34:59.449Z] Error running Puppeteer: net::ERR_CONNECTION_RESET at https://filings.dos.ny.gov/ords/corpanc/r/efiling/1?request=3111258907111&session=3111258907111
+[2024-08-24T12:35:15.640Z] Data fetched from API successfully.
+[2024-08-24T12:35:23.041Z] Login page loaded.
+[2024-08-24T12:35:49.088Z] Login failed: Waiting for selector `form` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T12:35:49.187Z] Error running Puppeteer: Execution context was destroyed
+[2024-08-24T12:35:52.506Z] Data fetched from API successfully.
+[2024-08-24T12:36:07.825Z] Login page loaded.
+[2024-08-24T12:36:16.925Z] Login successful.
+[2024-08-24T12:36:16.928Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T12:36:21.331Z] Error running Puppeteer: net::ERR_CONNECTION_RESET at https://filings.dos.ny.gov/ords/corpanc/r/efiling/1?request=7760196723111&session=7760196723111
+[2024-08-24T12:36:52.102Z] Data fetched from API successfully.
+[2024-08-24T12:37:06.504Z] Login page loaded.
+[2024-08-24T12:37:13.623Z] Login successful.
+[2024-08-24T12:37:13.626Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T12:37:50.330Z] Name added and continue button clicked.
+[2024-08-24T12:38:50.581Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T14:20:32.774Z] Data fetched from API successfully.
+[2024-08-24T14:20:48.092Z] Login page loaded.
+[2024-08-24T14:20:55.567Z] Login successful.
+[2024-08-24T14:20:55.574Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:21:00.369Z] Error running Puppeteer: Attempted to use detached Frame 'A00B010F6CFAA3C84D4DF85D8F02DED8'.
+[2024-08-24T14:21:39.121Z] Data fetched from API successfully.
+[2024-08-24T14:21:52.381Z] Login page loaded.
+[2024-08-24T14:22:00.585Z] Login successful.
+[2024-08-24T14:22:00.588Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:23:29.264Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T14:24:05.324Z] Data fetched from API successfully.
+[2024-08-24T14:24:16.056Z] Login page loaded.
+[2024-08-24T14:24:22.494Z] Login successful.
+[2024-08-24T14:24:22.499Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:24:34.552Z] Error running Puppeteer: net::ERR_CONNECTION_RESET at https://filings.dos.ny.gov/ords/corpanc/r/efiling/2?p2_filing_type=DLLC&p2_tra_record_id=&clear=RP,NAME_DETERMINATION,2,22&session=1007426244667
+[2024-08-24T14:25:44.745Z] Data fetched from API successfully.
+[2024-08-24T14:25:55.718Z] Login page loaded.
+[2024-08-24T14:26:02.469Z] Login successful.
+[2024-08-24T14:26:02.473Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:27:25.002Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T14:28:11.744Z] Data fetched from API successfully.
+[2024-08-24T14:28:18.778Z] Login page loaded.
+[2024-08-24T14:28:37.495Z] Login failed: Couldn't find login elements
+[2024-08-24T14:28:49.525Z] Data fetched from API successfully.
+[2024-08-24T14:28:55.983Z] Error running Puppeteer: Waiting for selector `ul.t-LinksList` failed: Protocol error (Runtime.callFunctionOn): Target closed
+[2024-08-24T14:29:00.025Z] Login page loaded.
+[2024-08-24T14:29:07.955Z] Login successful.
+[2024-08-24T14:29:07.958Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:29:21.954Z] Error running Puppeteer: net::ERR_CONNECTION_RESET at https://filings.dos.ny.gov/ords/corpanc/r/efiling/2?p2_filing_type=DLLC&p2_tra_record_id=&clear=RP,NAME_DETERMINATION,2,22&session=11759295813703
+[2024-08-24T14:29:31.877Z] Data fetched from API successfully.
+[2024-08-24T14:29:48.815Z] Login page loaded.
+[2024-08-24T14:29:56.927Z] Login successful.
+[2024-08-24T14:29:56.931Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:31:23.981Z] Data fetched from API successfully.
+[2024-08-24T14:31:31.209Z] Login page loaded.
+[2024-08-24T14:31:35.598Z] Data fetched from API successfully.
+[2024-08-24T14:31:44.537Z] Login page loaded.
+[2024-08-24T14:31:50.018Z] Login successful.
+[2024-08-24T14:31:50.022Z] Login failed: Cannot read properties of null (reading 'click')
+[2024-08-24T14:32:25.759Z] Name added and continue button clicked.
+[2024-08-24T14:33:25.982Z] Error running Puppeteer: Waiting for selector `.page-6.app-EFILING` failed: Waiting failed: 60000ms exceeded
+[2024-08-24T14:33:36.116Z] Login failed: Waiting for selector `form` failed: Waiting failed: 120000ms exceeded
+[2024-08-24T14:34:36.138Z] Error running Puppeteer: Waiting for selector `ul.t-LinksList` failed: Waiting failed: 60000ms exceeded

@@ -297,8 +297,8 @@ async function addDataLLC(page, data) {
             }
             nameField.value = data.Payload.Name.Legal_Name;
             nameField.value=nameField.value+" LLC"
-            if (nameField.value !== "Infosys LLC") {
-                throw new Error(`The value for the entity name is incorrect. It should be Infosys LLC`);
+            if (nameField.value !== "RedBeryl LLC") {
+                throw new Error(`The value for the entity name is incorrect. It is RedBeryl LLC`);
             }
 
 
@@ -797,5 +797,5 @@ async function adjustViewport(page) {
 
 
 app.listen(port, () => {
-    console.log(`Server listening at http://192.168.1.35:${port}`);
+    console.log(`Server listening at http://192.168.0.100:${port}`);
 });
