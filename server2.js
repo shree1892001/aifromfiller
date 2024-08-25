@@ -15,11 +15,11 @@ puppeteer.use(StealthPlugin());
 
 const app = express();
 const port = 3001;
-const apiEndpoint = 'http://192.168.1.35:3001/run-puppeteer'; // Adjust this if needed
+const apiEndpoint = 'http://192.168.1.10:3001/run-puppeteer'; // Adjust this if needed
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.35:3000','http://192.168.1.35:3001','http://localhost:3000','http://192.168.1.11:3000'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.35:3000','http://192.168.1.35:3001','http://localhost:3000','http://192.168.1.11:3000','http://192.168.1.4:3000','http://192.168.1.10:3001'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -77,6 +77,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 '--ignore-certificate-errors',
                 '--ignore-certificate-errors-spki-list',
                 '--disable-blink-features=AutomationControlled',
+                '--disable-notifications'
+
                 
             ],
             ignoreHTTPSErrors: true,
@@ -137,7 +139,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             secondLink.scrollIntoView()
             return secondLink ? secondLink.getAttribute('href') : null;
         });
-    }  else if(jsonData.EntityType === 'CORP'){
+    }  else if(jsonData.EntityType === 'Corp'){
         console.log("Getting the url for Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies)...");
           secondLinkUrl = await page.evaluate(() => {
             const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
@@ -297,8 +299,10 @@ async function addDataLLC(page, data) {
             }
             nameField.value = data.Payload.Name.Legal_Name;
             nameField.value=nameField.value+" LLC"
-            if (nameField.value !== "RedBeryl LLC") {
-                throw new Error(`The value for the entity name is incorrect. It is RedBeryl LLC`);
+            const name1= nameField.value+" LLC"
+            console.log(name1)
+            if (nameField.value !== nameField.value) {
+                throw new Error(`The value for the entity name is incorrect. It is Infosys LLC`);
             }
 
 
@@ -347,9 +351,10 @@ async function addDataCorp(page, data) {
             if (!nameField || !submitButton) {
                 throw new Error("Couldn't find name field or submit button");
             }
+            console.log("Entity Name is := ",data.Payload.Name.Legal_Name)
             nameField.value = data.Payload.Name.Legal_Name;
             nameField.value=nameField.value+" Corp."
-            if (nameField.value !== "Infosys Corp.") {
+            if (nameField.value !== nameField.value) {
                 throw new Error(`The value for the entity name is incorrect. It should be Infosys Corp.`);
             }
 
@@ -398,62 +403,67 @@ async function fillNextPageCorp(page, data) {
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
             document.querySelector('#P3_COUNTY').value = "4";
 
-            const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
-            effectiveDate.scrollIntoView()
-            const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
-            Dissolution_Date.scrollIntoView()
-            const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
-            liability_statement.scrollIntoView()
+            // const dropdown= document.querySelector('#P3_COUNTY')
+            // const option = Array.from(dropdown.options).find(opt => opt.text === data.Pa);
 
-            if (effectiveDate) {
-                effectiveDate.click();
-                const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
-                const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
 
-                if (radio1 && radio1.checked) {
-                    radio1.checked = true;
-                } else if (radio2 && radio2.checked) {
-                    const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
-                    if (effectiveDateInput) {
-                        effectiveDateInput.value = data.effectiveDate;
 
-                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            // const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
+            // effectiveDate.scrollIntoView()
+            // const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
+            // Dissolution_Date.scrollIntoView()
+            // const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
+            // liability_statement.scrollIntoView()
 
-                        const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
-                        if (dateComponent) {
-                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
-                            dateComponent.dispatchEvent(event);
-                        }
-                    }
-                }
-            }
+            // if (effectiveDate) {
+            //     effectiveDate.click();
+            //     const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
+            //     const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
 
-            if (Dissolution_Date) {
-                Dissolution_Date.click();
-                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            //     if (radio1 && radio1.checked) {
+            //         radio1.checked = true;
+            //     } else if (radio2 && radio2.checked) {
+            //         const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
+            //         if (effectiveDateInput) {
+            //             effectiveDateInput.value = data.effectiveDate;
 
-                if (radio1 && radio1.checked) {
-                    radio1.checked = true;
-                } else if (radio2 && radio2.checked) {
-                    const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
-                    if (effectiveDateInput) {
-                        effectiveDateInput.value = data.effectiveDate;
+            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            //             const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
+            //             if (dateComponent) {
+            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
+            //                 dateComponent.dispatchEvent(event);
+            //             }
+            //         }
+            //     }
+            // }
 
-                        const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
-                        if (dateComponent) {
-                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
-                            dateComponent.dispatchEvent(event);
-                        }
-                    }
-                }
-            }
+            // if (Dissolution_Date) {
+            //     Dissolution_Date.click();
+            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-            if (liability_statement) {
-                liability_statement.click();
-            }
+            //     if (radio1 && radio1.checked) {
+            //         radio1.checked = true;
+            //     } else if (radio2 && radio2.checked) {
+            //         const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
+            //         if (effectiveDateInput) {
+            //             effectiveDateInput.value = data.effectiveDate;
+
+            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+            //             const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
+            //             if (dateComponent) {
+            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
+            //                 dateComponent.dispatchEvent(event);
+            //             }
+            //         }
+            //     }
+            // }
+
+            // if (liability_statement) {
+            //     liability_statement.click();
+            // }
 
             const opt1 = document.querySelector("input#P3_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P3_SOP_ADDR_OPTION_1");
@@ -479,15 +489,15 @@ async function fillNextPageCorp(page, data) {
             const agentOpt1 = document.querySelector("input#P3_RA_ADDR_OPTION_0");
             const agentOpt2 = document.querySelector("input#P3_RA_ADDR_OPTION_1");
 
-            if (data.Payload.Registered_Agent) {
+            if (data.Payload.Registerd_Agent) {
                 const check=document.querySelector('#P3_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registered_Agent.Name;
-                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
-                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
-                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
-                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registerd_Agent.Name;
+                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registerd_Agent.Address.RA_Address_Line1;
+                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registerd_Agent.Address.RA_Address_Line2;
+                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registerd_Agent.Address.RA_City;
+                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registerd_Agent.Address.RA_Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P3_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -516,15 +526,16 @@ async function fillNextPageCorp(page, data) {
             }
 
 
-            document.querySelector('input[name="P3_INCORP_ADDR1"]').value = data.Payload.Incorporator_Information.Address.Address_Line1;
-            document.querySelector('input[name="P3_INCORP_CITY"]').value = data.Payload.Incorporator_Information.Address.City;
-            document.querySelector('input[name="P3_INCORP_POSTAL_CODE"]').value = data.Payload.Incorporator_Information.Address.Postal_Code;
-            document.querySelector('input[name="P3_SIGNATURE"]').value = data.Payload.Incorporator_Information.Incorporator_Details.Name + data.Payload.Incorporator_Information.Incorporator_Details.Name;
+            document.querySelector('input[name="P3_INCORP_ADDR1"]').value = data.Payload.Incorporator_Information.Address.Inc_Address_Line1;
+            document.querySelector('input[name="P3_INCORP_CITY"]').value = data.Payload.Incorporator_Information.Address.Inc_City;
+            document.querySelector('input[name="P3_INCORP_POSTAL_CODE"]').value = data.Payload.Incorporator_Information.Address.Inc_Postal_Code;
+            document.querySelector('input[name="P3_SIGNATURE"]').value = data.Payload.Incorporator_Information.Incorporator_Details.Name ;
 
 
             // stock 
 
             const stockInfo = data.Payload.Stock_Information;
+            console.log("Stock information is :=" ,stockInfo)
 const shareValue = stockInfo.Share_Par_Value;
 
 const stockType = shareValue !== undefined && shareValue !== null ? 'PV' : 'NPV';
@@ -624,82 +635,82 @@ async function fillNextPage(page, data) {
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" LLC";
             document.querySelector('#P4_COUNTY').value = "4";
 
-            const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
-            effectiveDate.scrollIntoView()
-            const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
-            Dissolution_Date.scrollIntoView()
-            const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
-            liability_statement.scrollIntoView()
+            // const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
+            // effectiveDate.scrollIntoView()
+            // const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
+            // Dissolution_Date.scrollIntoView()
+            // const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
+            // liability_statement.scrollIntoView()
 
-            if (effectiveDate) {
-                effectiveDate.click();
-                const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
-                const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
+            // if (effectiveDate) {
+            //     effectiveDate.click();
+            //     const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
+            //     const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
 
-                if (radio1 && radio1.checked) {
-                    radio1.checked = true;
-                } else if (radio2 && radio2.checked) {
-                    const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
-                    if (effectiveDateInput) {
-                        effectiveDateInput.value = data.effectiveDate;
+            //     if (radio1 && radio1.checked) {
+            //         radio1.checked = true;
+            //     } else if (radio2 && radio2.checked) {
+            //         const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
+            //         if (effectiveDateInput) {
+            //             effectiveDateInput.value = data.effectiveDate;
 
-                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-                        const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
-                        if (dateComponent) {
-                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
-                            dateComponent.dispatchEvent(event);
-                        }
-                    }
-                }
-            }
+            //             const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
+            //             if (dateComponent) {
+            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
+            //                 dateComponent.dispatchEvent(event);
+            //             }
+            //         }
+            //     }
+            // }
 
-            if (Dissolution_Date) {
-                Dissolution_Date.click();
-                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            // if (Dissolution_Date) {
+            //     Dissolution_Date.click();
+            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-                if (radio1 && radio1.checked) {
-                    radio1.checked = true;
-                } else if (radio2 && radio2.checked) {
-                    const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
-                    if (effectiveDateInput) {
-                        effectiveDateInput.value = data.effectiveDate;
+            //     if (radio1 && radio1.checked) {
+            //         radio1.checked = true;
+            //     } else if (radio2 && radio2.checked) {
+            //         const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
+            //         if (effectiveDateInput) {
+            //             effectiveDateInput.value = data.effectiveDate;
 
-                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-                        const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
-                        if (dateComponent) {
-                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
-                            dateComponent.dispatchEvent(event);
-                        }
-                    }
-                }
-            }
+            //             const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
+            //             if (dateComponent) {
+            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
+            //                 dateComponent.dispatchEvent(event);
+            //             }
+            //         }
+            //     }
+            // }
 
-            if (liability_statement) {
-                liability_statement.click();
-            }
+            // if (liability_statement) {
+            //     liability_statement.click();
+            // }
 
             const opt1 = document.querySelector("input#P4_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P4_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
                 document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
-                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.Address_Line1;
-                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.Address_Line2;
-                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.City;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.Postal_Code;
+                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
+                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
+                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
             } else if (opt2 && opt2.checked) {
                 const serviceCompanySelect = document.querySelector("#P4_SOP_SERVICE_COMPANY");
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
                 document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
-                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.Address_Line1;
-                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.Address_Line2;
-                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.City;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.Postal_Code;
+                document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
+                document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
+                document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
             }
 
             const agentOpt1 = document.querySelector("input#P4_RA_ADDR_OPTION_0");
@@ -722,16 +733,16 @@ async function fillNextPage(page, data) {
             }
         }
 
-            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Name;
-            document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Address.Address_Line1;
-            document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Address.City;
-            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Address.Postal_Code;
-            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Signature;
+            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
+            document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
+            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
+            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
 
-            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Name;
-            document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Address.Address_Line1;
-            document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Address.City;
-            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Address.Postal_Code;
+            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
+            document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
+            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
 
         }, data);
 
@@ -797,5 +808,5 @@ async function adjustViewport(page) {
 
 
 app.listen(port, () => {
-    console.log(`Server listening at http://192.168.0.100:${port}`);
+    console.log(`Server listening at http://192.168.1.10:${port}`);
 });

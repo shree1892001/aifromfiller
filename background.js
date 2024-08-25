@@ -55,7 +55,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   async function runPuppeteerScript(data) {
     try {
       // Forward request to the Puppeteer script API
-      const response = await fetch('http://192.168.1.35:3001/run-puppeteer', {
+      const response = await fetch('http://192.168.1.10:3001/run-puppeteer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
