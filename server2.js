@@ -401,10 +401,13 @@ async function fillNextPageCorp(page, data) {
            
 
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
-            document.querySelector('#P3_COUNTY').value = "4";
+            // document.querySelector('#P3_COUNTY').value = "4";
 
-            // const dropdown= document.querySelector('#P3_COUNTY')
-            // const option = Array.from(dropdown.options).find(opt => opt.text === data.Pa);
+            const dropdown= document.querySelector('#P3_COUNTY')
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County);
+            if(option){
+                dropdown.value=option.value ;
+            }
 
 
 
@@ -633,8 +636,12 @@ async function fillNextPage(page, data) {
             }
 
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" LLC";
-            document.querySelector('#P4_COUNTY').value = "4";
-
+            // document.querySelector('#P4_COUNTY').value = "4";
+            const dropdown= document.querySelector('#P3_COUNTY')
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County);
+            if(option){
+                dropdown.value=option.value ;
+            }
             // const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
             // effectiveDate.scrollIntoView()
             // const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
