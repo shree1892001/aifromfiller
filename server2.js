@@ -19,7 +19,7 @@ const apiEndpoint = 'http://192.168.1.10:3001/run-puppeteer'; // Adjust this if 
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.35:3000','http://192.168.1.35:3001','http://localhost:3000','http://192.168.1.11:3000','http://192.168.1.4:3000','http://192.168.1.10:3001'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.35:3000','http://192.168.1.35:3001','http://localhost:3000','http://192.168.1.11:3000','http://192.168.1.4:3000','http://192.168.1.10:3001','http://192.168.1.4:3001'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -59,12 +59,19 @@ let clients = [];
 
 
 app.use(bodyParser.json());
+function cleanData(data) {
+    return JSON.parse(JSON.stringify(data, (key, value) => {
+        // Remove properties with undefined values
+        return value === undefined ? null : value;
+    }));
+}
 
 async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     try {
         
-        const jsonData = requestPayload;
-        console.log(jsonData)
+        const  jsonData = cleanData(requestPayload.data);
+        //jsonData=JSON.parse(jsonData);
+        console.log(jsonData);
         log('Data fetched from API successfully.');
 
         const browser = await puppeteer.launch({
@@ -82,6 +89,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 
             ],
             ignoreHTTPSErrors: true,
+            slowMo : 100
         });
 
         const page = await browser.newPage();
@@ -132,14 +140,14 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         console.log("Domestic Business Corporation and Domestic Limited Liability Company page loaded.");
         await randomSleep(3000, 5000);
         let secondLinkUrl;
-        if(jsonData.EntityType === 'LLC'){
+        if(jsonData.EntityType.orderShortName === 'LLC'){
         console.log("Getting the url for Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies)...");
           secondLinkUrl = await page.evaluate(() => {
             const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(2) a.t-LinksList-link');
             secondLink.scrollIntoView()
             return secondLink ? secondLink.getAttribute('href') : null;
         });
-    }  else if(jsonData.EntityType === 'Corp'){
+    }  else if(jsonData.EntityType.orderShortName === 'Corp'){
         console.log("Getting the url for Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies)...");
           secondLinkUrl = await page.evaluate(() => {
             const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
@@ -167,10 +175,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
         console.log("Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies) page   loaded.");
         await randomSleep(3000, 5000);
-        let entityType = jsonData.EntityType.trim().toUpperCase();
+        let entityType = jsonData.EntityType.orderShortName.trim().toUpperCase();
 
         if (entityType === 'LLC') {
-            await addDataLLC(page, jsonData);
+            await addDataLLC(page, browser,jsonData);
         } else if (entityType === 'CORP') {
             await addDataCorp(page, jsonData);
         }
@@ -190,12 +198,12 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         console.error("Error running Puppeteer:", e);
 
         if (isNetworkError(e)) {
-            if (retryCount < 10) {  // Adjust the retry limit as needed
+            if (retryCount < 10) {  
                 log(`Network error detected. Restarting script... (Attempt ${retryCount + 1})`);
                 await runPuppeteerScript(apiEndpoint, requestPayload, retryCount + 1);
             } else {
                 log('Max retries reached. Script stopped.');
-                throw e;  // Rethrow the error if max retries are reached
+                throw e;  
             }
         } else {
             throw e;
@@ -205,7 +213,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 app.post('/run-puppeteer', async (req, res) => {
 
-    shouldTriggerAutomation = true; // Set the trigger flag
+    shouldTriggerAutomation = true; 
 
     const jsonData = req.body;
 
@@ -216,17 +224,16 @@ app.post('/run-puppeteer', async (req, res) => {
 
     try {
         await runPuppeteerScript(apiEndpoint, jsonData);
-        res.send('Puppeteer script executed successfully.');
+        res.status(200).json(result);
+        //res.send('Puppeteer script executed successfully.');
     } catch (e) {
-        res.status(500).send('Error running Puppeteer.');
+        res.status(500).json({ status: 'error', message: e.message });
+
+        browser.close();
+        //res.status(200).send('The En.');
     }
 });
-app.get('/check-trigger', (req, res) => {
-    res.json({ trigger: shouldTriggerAutomation });
-    if (shouldTriggerAutomation) {
-      shouldTriggerAutomation = false; // Reset the trigger flag after checking
-    }
-  });
+
 
 async function setupPage(page) {
     await page.setJavaScriptEnabled(true);
@@ -258,8 +265,8 @@ async function performLogin(page,jsonData) {
                 throw new Error("Couldn't find login elements");
             }
 
-            usernameField.value = jsonData.State.fillingWebsiteUsername;
-            passwordField.value = jsonData.State.fillingWebsitePassword;
+            usernameField.value = jsonData.State.filingWebsiteUsername;
+            passwordField.value = jsonData.State.filingWebsitePassword;
             const submitButton = document.querySelector('button#P101_LOGIN');
 
             submitButton.click();
@@ -279,64 +286,199 @@ async function performLogin(page,jsonData) {
 
     } catch (e) {
         log(`Login failed: ${e.message}`);
+        result = { status: 'error', message: e.message };
+
         console.error("Login failed:", e);
     }
 }
 
-async function addDataLLC(page, data) {
+// async function addDataLLC(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
+
+
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+//             // try{
+//             //     if(data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")){
+//             //         nameField.value = data.Payload.Name.Legal_Name;
+
+//             //     }
+//             //     // else if(!((data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")) && data.Payload.Name.Legal_Name.includes(" "))){
+//             //     //     const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
+//             //     //     error.statusCode = 400 ; 
+//             //     //     throw error;
+//             //     // } 
+//             //     else if(!(data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
+//             //         nameField.value = data.Payload.Name.Legal_Name;
+//             //         nameField.value=nameField.value+" LLC"
+//             //     }
+//             //     if (checkbox) {
+//             //         checkbox.checked = data.checked;
+//             //     }
+//             //     submitButton.click();
+//             // }catch(e){
+//             //     return { status: 'error', message: e.message };
+//             // }
+//             const entityDesignations = [
+//                  "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+//                 "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+//                 "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+//                 "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+//                 "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+//                 "Mutual", "Association","Pvt Ltd"
+//             ];
+            
+//             try {
+//                 let legalName = data.Payload.Name.Legal_Name;
+            
+             
+            
+//                 if (legalName.includes("LLC") || legalName.includes("Limited Liability Company") || legalName.includes("LL.C.")) {
+//                     nameField.value = legalName;
+//                     console.log("Legal Name ;=", legalName)
+//                     return  {status: "success"} ;
+
+//                 } else {
+//                     nameField.value=legalName;
+
+//                     throw new error(legalName +" Entity name is invalid it should be in the form Infosys LLC / Infosys Limited Liability Company /Infosys LL.C.")
+                     
+
+
+
+//  }
+
+
+            
+//                 // Handle checkbox if present
+//                 if (checkbox) {
+//                     checkbox.checked = data.checked;
+//                 }
+            
+//                 // Click the submit button
+//                 submitButton.click();
+            
+//             } catch (e) {
+//                 // Return error status with message
+//                 result={ status: 'error', message: e.message };
+//                 process.exit(1);
+//             }
+            
+//             // nameField.value=nameField.value+" LLC"
+//             // const name1= nameField.value+" LLC"
+//             // console.log(name1)
+//             // if (nameField.value !== nameField.value) {
+//             //     throw new Error(`The value for the entity name is incorrect. It is Infosys LLC`);
+//             // }
+
+
+//         }, data);
+    
+    
+
+
+//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+//         log('Name added and continue button clicked.');
+
+//         await fillNextPage(page, data);
+//     } catch (e) {
+//         await page.evaluate((message) => {
+//             const errorDiv = document.createElement('div');
+//             errorDiv.textContent = `Adding name failed: ${message}`;
+//             errorDiv.style.position = 'fixed';
+//             errorDiv.style.top = '0';
+//             errorDiv.style.left = '0';
+//             errorDiv.style.backgroundColor = 'red';
+//             errorDiv.style.color = 'white';
+//             errorDiv.style.padding = '10px';
+//             errorDiv.style.zIndex = '1000';
+//             document.body.appendChild(errorDiv);
+//             result = { status: 'error', message: e.message };
+//             process.exit(1); 
+
+//         }, e.message);
+//         console.error("Adding name failed:", e);
+//         return { status: 'error', message: e.message };
+//     }
+// }
+async function addDataLLC(page, browser, data) {
+    let result;
+
     try {
         console.log("Attempting to add the name");
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
-        await page.evaluate((data) => {
+        const  result = await page.evaluate((data) => {
             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-            const submitButton = document.querySelector('button.t-Button--hot');
 
-
-            if (!nameField || !submitButton) {
-                throw new Error("Couldn't find name field or submit button");
-            }
-            nameField.value = data.Payload.Name.Legal_Name;
-            nameField.value=nameField.value+" LLC"
-            const name1= nameField.value+" LLC"
-            console.log(name1)
-            if (nameField.value !== nameField.value) {
-                throw new Error(`The value for the entity name is incorrect. It is Infosys LLC`);
+            if (!nameField) {
+                throw new Error("Couldn't find the name field");
             }
 
+            const legalName = data.Payload.Name.Legal_Name;
+            const validFormats = ["LLC", "Limited Liability Company", "LL.C."];
 
+            if (!validFormats.some(format => legalName.includes(format))) {
+                // Set the invalid name in the field for visibility
+                nameField.value = legalName;
+
+                // Throw an error if the legal name is invalid
+                throw new Error(`Entity name "${legalName}" is invalid. It should include 'LLC', 'Limited Liability Company', or 'LL.C.'`);
+            }
+
+            // Set the legal name in the field
+            nameField.value = legalName;
+
+            // Set checkbox if present
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
-            submitButton.click();
 
-
+            // Return success status
+            return { status: 'success' };
         }, data);
 
-    
+        if (result.status === 'success') {
+            // Proceed with automation
+            await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
+            const submitButtonExists = await page.evaluate(() => {
+                const submitButton = document.querySelector('button.t-Button--hot');
+                if (!submitButton) {
+                    return false;
+                }
+        
+                submitButton.click();  // Click the button within the browser context
+                return true;
+            });
+        
+            if (!submitButtonExists) {
+                throw new Error("Couldn't find the submit button");
+            }
 
+            await fillNextPage(page, data);
+        }
 
-        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-        log('Name added and continue button clicked.');
-
-        await fillNextPage(page, data);
     } catch (e) {
-        await page.evaluate((message) => {
-            const errorDiv = document.createElement('div');
-            errorDiv.textContent = `Adding name failed: ${message}`;
-            errorDiv.style.position = 'fixed';
-            errorDiv.style.top = '0';
-            errorDiv.style.left = '0';
-            errorDiv.style.backgroundColor = 'red';
-            errorDiv.style.color = 'white';
-            errorDiv.style.padding = '10px';
-            errorDiv.style.zIndex = '1000';
-            document.body.appendChild(errorDiv);
-        }, e.message);
-        console.error("Adding name failed:", e);
+        console.error("Adding name failed:", e.message);
+        browser.close();
+        throw e;
     }
+        // Close the browser if an error occurred
+        
+    
+    // Return the result
 }
+
+
 async function addDataCorp(page, data) {
     try {
         console.log("Attempting to add the name");
@@ -351,18 +493,56 @@ async function addDataCorp(page, data) {
             if (!nameField || !submitButton) {
                 throw new Error("Couldn't find name field or submit button");
             }
-            console.log("Entity Name is := ",data.Payload.Name.Legal_Name)
-            nameField.value = data.Payload.Name.Legal_Name;
-            nameField.value=nameField.value+" Corp."
-            if (nameField.value !== nameField.value) {
-                throw new Error(`The value for the entity name is incorrect. It should be Infosys Corp.`);
-            }
+            // //Corporation, Corp., Limited, Ltd., Incorporated, Inc.
+            // if(data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc") ){
+            //     nameField.value = data.Payload.Name.Legal_Name;
+
+            // }
+            // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc")) && data.Payload.Name.Legal_Name.includes(" "))){
+            //     const error = new Error("Company name does not contain any allowed terms such as 'Corporation, Corp., Limited, Ltd., Incorporated, Inc.'");
+            //     error.statusCode = 400 ; 
+            //     throw error;
+            // } 
+            // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc"))) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
+            //     nameField.value = data.Payload.Name.Legal_Name;
+            //     nameField.value=nameField.value+" Corp."
+            //     // const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
+            //     // error.statusCode = 400 ; 
+            //     // throw error;
+
+
+            // } 
+            const entityDesignations = [
+                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+               "LLC","Limited Liability Company","L.L.C.",
+               "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+               "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+               "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+               "Mutual", "Association","Pvt Ltd"
+           ];
+           
+           try {
+               let legalName = data.Payload.Name.Legal_Name;
+           
+               entityDesignations.forEach(term => {
+                   const regex = new RegExp(`\\b${term}\\b`, 'i');
+                   legalName = legalName.replace(regex, '').trim();
+               });
+           
+               if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+                   nameField.value = legalName;
+               } else {
+                   nameField.value = `${legalName} Corp.`;
+               }
 
 
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
             submitButton.click();
+        }  catch (e) {
+            return { status: 'error', message: e.message };
+        }
 
 
         }, data);
@@ -401,10 +581,33 @@ async function fillNextPageCorp(page, data) {
            
 
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
+
+            // const entityDesignations = [
+            //     "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+            //     "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+            //     "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+            //     "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+            //     "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+            //     "Mutual", "Association", "Pvt Ltd"
+            // ];
+
+            let legalName = data.Payload.Name.Legal_Name;
+
+            entityDesignations.forEach(term => {
+                const regex = new RegExp(`\\b${term}\\b`, 'i');
+                legalName = legalName.replace(regex, '').trim();
+            });
+
+            if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+                document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
+            } else {
+                // Append " LLC" if there are no terms and no space
+                document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
+            }
             // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County);
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
@@ -605,6 +808,8 @@ if (clickedButton === 'ServiceCompany') {
             errorDiv.style.color = 'white';
             errorDiv.style.padding = '10px';
             errorDiv.style.zIndex = '1000';
+            result = { status: 'error', message: e.message };
+
             document.body.appendChild(errorDiv);
         }, e.message);
         console.error("Filling next page failed:", e);
@@ -634,11 +839,35 @@ async function fillNextPage(page, data) {
             if (radioButtons.length > 0) {
                 radioButtons[0].checked = true;
             }
+            
+            // const entityDesignations = [
+            //     "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+            //     "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+            //     "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+            //     "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+            //     "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+            //     "Mutual", "Association", "Pvt Ltd"
+            // ];
 
-            document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" LLC";
+            let legalName = data.Payload.Name.Legal_Name;
+
+            entityDesignations.forEach(term => {
+                const regex = new RegExp(`\\b${term}\\b`, 'i');
+                legalName = legalName.replace(regex, '').trim();
+            });
+
+            if (legalName.includes("LLC") || legalName.includes("Limited Liability Company") || legalName.includes("LL.C.")) {
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
+            } else {
+                // Append " LLC" if there are no terms and no space
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = `${legalName} LLC`;
+            }
+            // Set the value in the input field
+            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
+            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
             // document.querySelector('#P4_COUNTY').value = "4";
-            const dropdown= document.querySelector('#P3_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County);
+            const dropdown= document.querySelector('#P4_COUNTY')
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
@@ -760,17 +989,19 @@ async function fillNextPage(page, data) {
             const errorDiv = document.createElement('div');
             errorDiv.textContent = `Next page fill failed: ${message}`;
             errorDiv.style.position = 'fixed';
-            errorDiv.style.top = '0';
-            errorDiv.style.left = '0';
-            errorDiv.style.backgroundColor = 'red';
-            errorDiv.style.color = 'white';
+            errorDiv.style.top = '500';
+            errorDiv.style.left = '500';
+            errorDiv.style.right='500';
+
+            errorDiv.style.backgroundColor = 'white';
+            errorDiv.style.color = 'red';
             errorDiv.style.padding = '10px';
             errorDiv.style.zIndex = '1000';
             document.body.appendChild(errorDiv);
         }, e.message);
         console.error("Filling next page failed:", e);
     }
-    await page.hover('button.t-Button--hot');
+    // await page.hover('button.t-Button--hot');
 
 
     await page.evaluate(() => {
@@ -783,7 +1014,7 @@ async function fillNextPage(page, data) {
 }
 
 function isNetworkError(error) {
-    return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET'].includes(error.code);
+    return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET','ERR_CONNECTION_RESET','ERR_CONNECTION_REFUSED'].includes(error.code);
 }
 
 async function retry(fn, retries = 3) {
@@ -810,7 +1041,6 @@ async function adjustViewport(page) {
     });
 }
 
-// Call this function where needed
 
 
 

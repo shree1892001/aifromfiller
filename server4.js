@@ -15,11 +15,11 @@ puppeteer.use(StealthPlugin());
 
 const app = express();
 const port = 3001;
-const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if needed
+const apiEndpoint = 'http://192.168.1.10:3001/run-puppeteer'; // Adjust this if needed
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.35:3000','http://192.168.1.35:3001','http://localhost:3000','http://192.168.1.11:3000','http://192.168.1.4:3000','http://192.168.1.10:3001','http://192.168.1.4:3001'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -67,14 +67,14 @@ function cleanData(data) {
 }
 
 async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
-    let browser;
-
     try {
-        const jsonData = cleanData(requestPayload.data);
+        
+        const  jsonData = cleanData(requestPayload.data);
+        //jsonData=JSON.parse(jsonData);
         console.log(jsonData);
         log('Data fetched from API successfully.');
 
-        browser = await puppeteer.launch({
+        const browser = await puppeteer.launch({
             headless: false,
             args: [
                 '--start-maximized',
@@ -85,153 +85,134 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 '--ignore-certificate-errors-spki-list',
                 '--disable-blink-features=AutomationControlled',
                 '--disable-notifications'
+
+                
             ],
             ignoreHTTPSErrors: true,
-            slowMo: 50
+            slowMo : 100
         });
 
         const page = await browser.newPage();
         await setupPage(page);
+
         await adjustViewport(page);
 
         await retry(async () => {
-            try {
-                sendWebSocketMessage('Navigating to the login page...');
-                console.log("Navigating to the login page...");
-                const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
-                    waitUntil: 'networkidle0',
-                    timeout: 60000
-                });
-                log('Login page loaded.');
-            } catch (error) {
-                console.error("Error navigating to the login page:", error.message);
-                throw new Error("Navigation to the login page failed.");
-            }
+            sendWebSocketMessage('Navigating to the login page...');
+             
+            console.log("Navigating to the login page...");
+            await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
+            log('Login page loaded.');
         });
 
         await randomSleep(3000, 5000);
-        try {
-            await performLogin(page, jsonData);
-        } catch (error) {
-            console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Invalid Login Credentials");
-        }
+        await performLogin(page,jsonData);
 
         await adjustViewport(page);
 
-        console.log("Waiting for the list to appear...");
-        try {
-            await page.waitForSelector('ul.t-LinksList', { visible: true, timeout: 60000 });
-        } catch (error) {
-            console.error("Error waiting for the list to appear:", error.message);
-            throw new Error("List not found.");
-        }
+        
 
-        console.log("Opening the link Domestic Business Corporation and Domestic Limited Liability Company...");
-        let firstLinkUrl;
-        try {
-            firstLinkUrl = await page.evaluate(() => {
-                const firstLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
-                firstLink.scrollIntoView();
-                return firstLink ? firstLink.getAttribute('href') : null;
-            });
-        } catch (error) {
-            console.error("Error getting the first link URL:", error.message);
-            throw new Error("Failed to get the first link URL.");
-        }
+        console.log("Waiting for the list to appear...");
+        await page.waitForSelector('ul.t-LinksList', { visible: true, timeout: 60000 });
+
+        console.log("Opening the link Domestic Business Corporation and Domestic Limited Liability Company..");
+       
+        const firstLinkUrl = await page.evaluate(() => {
+            const firstLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
+
+            firstLink.scrollIntoView()
+            return firstLink ? firstLink.getAttribute('href') : null;
+
+        });
+
+        await randomSleep(3000, 5000);
 
         if (!firstLinkUrl) {
-            throw new Error("Couldn't find the Domestic Business Corporation and Domestic Limited Liability Company link.");
+            throw new Error("Couldn't find the Domestic Business Corporation and Domestic Limited Liability Company");
         }
 
-        console.log("Opening the Domestic Business Corporation and Domestic Limited Liability Company...");
-        try {
-            await page.goto(new URL(firstLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
-        } catch (error) {
-            console.error("Error navigating to the Domestic Business Corporation page:", error.message);
-            throw new Error("Failed to navigate to the Domestic Business Corporation page.");
-        }
+        console.log("Opening the Domestic Business Corporation and Domestic Limited Liability Company..");
+        await page.goto(new URL(firstLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
 
         console.log("Domestic Business Corporation and Domestic Limited Liability Company page loaded.");
         await randomSleep(3000, 5000);
-
         let secondLinkUrl;
-        if (jsonData.EntityType.orderShortName === 'LLC') {
-            console.log("Getting the URL for Articles of Organization for a Domestic Limited Liability Company...");
-            try {
-                secondLinkUrl = await page.evaluate(() => {
-                    const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(2) a.t-LinksList-link');
-                    secondLink.scrollIntoView();
-                    return secondLink ? secondLink.getAttribute('href') : null;
-                });
-            } catch (error) {
-                console.error("Error getting the second link URL:", error.message);
-                throw new Error("Failed to get the second link URL for LLC.");
-            }
-        } else if (jsonData.EntityType.orderShortName === 'Corp') {
-            console.log("Getting the URL for Articles of Organization for a Domestic Corporation...");
-            try {
-                secondLinkUrl = await page.evaluate(() => {
-                    const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
-                    secondLink.scrollIntoView();
-                    return secondLink ? secondLink.getAttribute('href') : null;
-                });
-            } catch (error) {
-                console.error("Error getting the second link URL:", error.message);
-                throw new Error("Failed to get the second link URL for Corp.");
-            }
-        }
+        if(jsonData.EntityType.orderShortName === 'LLC'){
+        console.log("Getting the url for Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies)...");
+          secondLinkUrl = await page.evaluate(() => {
+            const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(2) a.t-LinksList-link');
+            secondLink.scrollIntoView()
+            return secondLink ? secondLink.getAttribute('href') : null;
+        });
+    }  else if(jsonData.EntityType.orderShortName === 'Corp'){
+        console.log("Getting the url for Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies)...");
+          secondLinkUrl = await page.evaluate(() => {
+            const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
+            secondLink.scrollIntoView()
+            return secondLink ? secondLink.getAttribute('href') : null;
+        });
 
-        await randomSleep(3000, 5000);
+    }
+    
+    
+    
+    await randomSleep(3000, 5000);
+
+
+        await adjustViewport(page);
+
+
 
         if (!secondLinkUrl) {
-            throw new Error("Couldn't find the Articles of Organization URL.");
+            throw new Error("Couldn't find the Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies) URL");
         }
 
-        console.log("Opening the Articles of Organization...");
-        try {
-            await page.goto(new URL(secondLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
-        } catch (error) {
-            console.error("Error navigating to the Articles of Organization page:", error.message);
-            throw new Error("Failed to navigate to the Articles of Organization page.");
-        }
+        console.log("Opening the Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies) URL...");
+        await page.goto(new URL(secondLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
 
-        console.log("Articles of Organization page loaded.");
+        console.log("Articles of Organization for a Domestic Limited Liability Company (not for professional service limited liability companies) page   loaded.");
         await randomSleep(3000, 5000);
-
         let entityType = jsonData.EntityType.orderShortName.trim().toUpperCase();
+
         if (entityType === 'LLC') {
             await addDataLLC(page, jsonData);
         } else if (entityType === 'CORP') {
             await addDataCorp(page, jsonData);
         }
-        console.log("Waiting for the preview page to be loaded...");
-        try {
-            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 60000 });
-        } catch (error) {
-            console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Name is invalid");
-        }
 
+        console.log("Waiting for the preview page to be loaded...");
+        await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 60000 });
         await adjustViewport(page);
+
+
 
         log("Next step completed and preview loaded.");
         await randomSleep(180000, 220000);
 
+        await browser.close();
     } catch (e) {
+        log(`Error running Puppeteer: ${e.message}`);
         console.error("Error running Puppeteer:", e);
-    
-        // Pass a more specific error message to your API response
-        return { status: 'error', message: e.message || "An unexpected error occurred" };
 
-    } finally {
-        if (browser) {
-            await browser.close();
+        if (isNetworkError(e)) {
+            if (retryCount < 10) {  
+                log(`Network error detected. Restarting script... (Attempt ${retryCount + 1})`);
+                await runPuppeteerScript(apiEndpoint, requestPayload, retryCount + 1);
+            } else {
+                log('Max retries reached. Script stopped.');
+                throw e;  
+            }
+        } else {
+            throw e;
         }
     }
 }
 
 app.post('/run-puppeteer', async (req, res) => {
+
     shouldTriggerAutomation = true; 
 
     const jsonData = req.body;
@@ -242,11 +223,14 @@ app.post('/run-puppeteer', async (req, res) => {
     }
 
     try {
-        const result = await runPuppeteerScript(apiEndpoint, jsonData);
-        res.status(200).json(result);
+        await runPuppeteerScript(apiEndpoint, jsonData);
+        result = { status: 'Success', message: 'Puppeteer script executed successfully.' };
+        //res.send('Puppeteer script executed successfully.');
     } catch (e) {
-        res.status(500).json({ status: 'error', message: e.message });
+        result = { status: 'error', message: e.message };
+        //res.status(200).send('The En.');
     }
+    res.status(200).json(result);
 });
 
 
@@ -267,201 +251,153 @@ async function randomSleep(min = 1000, max = 2000) {
     await new Promise(resolve => setTimeout(resolve, sleepTime));
 }
 
-async function performLogin(page, jsonData) {
+async function performLogin(page,jsonData) {
     try {
         console.log("Attempting to login...");
-
-        // Wait for the form to be visible
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
-        // Fill in the login form and handle the submit
         await page.evaluate((jsonData) => {
             const usernameField = document.querySelector('input[name="P101_USERNAME"]');
             const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-            const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
 
-            if (!usernameField || !passwordField || !submitButton) {
+            if (!usernameField || !passwordField ) {
                 throw new Error("Couldn't find login elements");
             }
 
-            // Set the username and password
             usernameField.value = jsonData.State.filingWebsiteUsername;
             passwordField.value = jsonData.State.filingWebsitePassword;
+            const submitButton = document.querySelector('button#P101_LOGIN');
 
-            // Check if `apex` object is available
-            if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
-                // Use apex.submit if available
-                apex.submit({ request: 'LOGIN', validate: true });
-            } else if (submitButton) {
-                // Fallback to clicking the button if `apex.submit` is not available
-                submitButton.click();
-            } else {
-                throw new Error("Submit method or button not found");
-            }
+            submitButton.click();
 
-        }, jsonData);
 
-        // Wait for navigation or some indication that login succeeded
+        },jsonData);
+
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+        log('Login successful.');
+        await page.evaluate(()=>{
+            const submitButton = document.querySelector('button#P101_LOGIN');
 
-        // Check for error messages after navigation
-        const alertSelector = '#t_Alert_Notification';
-        const errorMessage = 'Invalid Login Credentials';
-        
-        const alertVisible = await page.evaluate((alertSelector) => {
-            const alert = document.querySelector(alertSelector);
-            return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
-        }, alertSelector);
+            submitButton.click();
 
-        if (alertVisible) {
-            console.error("Login failed: Invalid Login Credentials");
-            throw new Error("Login failed: Invalid Login Credentials");
-        }
 
-        console.log('Login successful.');
+        })
 
-    } catch (error) {
-        console.error("Login failed:", error.message);
-        throw error; // Re-throw the error for higher-level handling
+    } catch (e) {
+        log(`Login failed: ${e.message}`);
+        result = { status: 'error', message: e.message };
+
+        console.error("Login failed:", e);
     }
 }
-
-
-// async function fillForm(page, data) {
-//     try {
-//         console.log("Filling out the form");
-
-//         // Wait for the form to be visible
-//         await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
-//         await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
-
-//         // Fill out the form fields
-//         await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
-
-//         console.log('Form filled out.');
-//     } catch (err) {
-//         console.error("Error during form filling:", err.message);
-//         throw err;
-//     }
-// }
-
-// async function submitForm(page) {
-//     try {
-//         console.log("Submitting the form");
-
-//         // Trigger the onclick event of the submit button using the id
-//         await page.evaluate(() => {
-//             const submitButton = document.getElementById('B78886587564901765');
-//             if (submitButton) {
-//                 submitButton.click(); // Trigger the button's click event
-//             } else {
-//                 throw new Error('Submit button not found');
-//             }
-//         });
-
-//         console.log('Submit button clicked via onclick event.');
-
-//         // Wait for navigation after form submission
-//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
-
-//         console.log('Navigation after submission complete.');
-//     } catch (err) {
-//         console.error("Error during form submission or navigation:", err.message);
-//         throw err;
-//     }
-// }
-
-
-// async function addDataLLC(page, data) {
-//     try {
-//         // Fill out the form
-//         await fillForm(page, data);
-
-//         // Submit the form and handle navigation
-//         await submitForm(page);
-
-//         // Proceed to the next page or action
-//         await fillNextPage(page, data);
-
-//     } catch (e) {
-//         // Specific handling for errors
-//         if (e.message.includes('Execution context was destroyed')) {
-//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-//         } else {
-//             console.error("Adding name failed:", e.message);
-//         }
-
-//         // Return a specific error message as required
-//         throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
-//     }
-// }
-
 
 async function addDataLLC(page, data) {
     try {
         console.log("Attempting to add the name");
-
-        // Wait for the form to be available
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
-        // Fill out the form and submit
         await page.evaluate((data) => {
             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
             const submitButton = document.querySelector('button.t-Button--hot');
 
+
             if (!nameField || !submitButton) {
                 throw new Error("Couldn't find name field or submit button");
             }
+            // try{
+            //     if(data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")){
+            //         nameField.value = data.Payload.Name.Legal_Name;
 
-            // Set the name and checkbox values
-            nameField.value = data.Payload.Name.Legal_Name;
-            if (checkbox) {
-                checkbox.checked = data.checked;
+            //     }
+            //     // else if(!((data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")) && data.Payload.Name.Legal_Name.includes(" "))){
+            //     //     const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
+            //     //     error.statusCode = 400 ; 
+            //     //     throw error;
+            //     // } 
+            //     else if(!(data.Payload.Name.Legal_Name.includes("LLC") || data.Payload.Name.Legal_Name.includes("Limited Liability Company") || data.Payload.Name.Legal_Name.includes("LL.C.")) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
+            //         nameField.value = data.Payload.Name.Legal_Name;
+            //         nameField.value=nameField.value+" LLC"
+            //     }
+            //     if (checkbox) {
+            //         checkbox.checked = data.checked;
+            //     }
+            //     submitButton.click();
+            // }catch(e){
+            //     return { status: 'error', message: e.message };
+            // }
+            const entityDesignations = [
+                 "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+                "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+                "Mutual", "Association","Pvt Ltd"
+            ];
+            
+            try {
+                let legalName = data.Payload.Name.Legal_Name;
+            
+                entityDesignations.forEach(term => {
+                    const regex = new RegExp(`\\b${term}\\b`, 'i');
+                    legalName = legalName.replace(regex, '').trim();
+                });
+            
+                if (legalName.includes("LLC") || legalName.includes("Limited Liability Company") || legalName.includes("LL.C.")) {
+                    nameField.value = legalName;
+                } else {
+                    nameField.value = `${legalName} LLC`;
+                }
+            
+                // Handle checkbox if present
+                if (checkbox) {
+                    checkbox.checked = data.checked;
+                }
+            
+                // Click the submit button
+                submitButton.click();
+            
+            } catch (e) {
+                // Return error status with message
+                return { status: 'error', message: e.message };
             }
+            
+            // nameField.value=nameField.value+" LLC"
+            // const name1= nameField.value+" LLC"
+            // console.log(name1)
+            // if (nameField.value !== nameField.value) {
+            //     throw new Error(`The value for the entity name is incorrect. It is Infosys LLC`);
+            // }
 
-            // Trigger form submission
-            submitButton.click();
+
         }, data);
 
-        // Wait for either navigation or an error message to appear
-        try {
-            // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
-        } catch (err) {
-            console.log("Page did not navigate, likely staying on the same page due to an error.");
-        }
+    
 
-        // Check if the error message about the unacceptable name appears
-        const nameInvalid = await page.evaluate(() => {
-            const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
-        });
 
-        // If the error message exists, throw an error
-        if (nameInvalid) {
-            throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
-        }
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+        log('Name added and continue button clicked.');
 
-        console.log("Name added successfully!");
-        await fillNextPage(page, data)
-
+        await fillNextPage(page, data);
     } catch (e) {
-        // Specific error handling
-        if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-        } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        } else {
-            console.error("An error occurred:", e.message);
-        }
+        await page.evaluate((message) => {
+            const errorDiv = document.createElement('div');
+            errorDiv.textContent = `Adding name failed: ${message}`;
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.backgroundColor = 'red';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '10px';
+            errorDiv.style.zIndex = '1000';
+            document.body.appendChild(errorDiv);
+            result = { status: 'error', message: e.message };
 
-        // Re-throw the error if necessary
-        throw e;
+        }, e.message);
+        console.error("Adding name failed:", e);
+        return { status: 'error', message: e.message };
     }
 }
-
-
 async function addDataCorp(page, data) {
     try {
         console.log("Attempting to add the name");
@@ -823,8 +759,28 @@ async function fillNextPage(page, data) {
                 radioButtons[0].checked = true;
             }
             
+            const entityDesignations = [
+                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+                "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+                "Mutual", "Association", "Pvt Ltd"
+            ];
+
             let legalName = data.Payload.Name.Legal_Name;
-            document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
+
+            entityDesignations.forEach(term => {
+                const regex = new RegExp(`\\b${term}\\b`, 'i');
+                legalName = legalName.replace(regex, '').trim();
+            });
+
+            if (legalName.includes("LLC") || legalName.includes("Limited Liability Company") || legalName.includes("LL.C.")) {
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
+            } else {
+                // Append " LLC" if there are no terms and no space
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = `${legalName} LLC`;
+            }
             // Set the value in the input field
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
@@ -1008,5 +964,5 @@ async function adjustViewport(page) {
 
 
 app.listen(port, () => {
-    console.log(`Server listening at http://localhost:${port}`);
+    console.log(`Server listening at http://192.168.1.10:${port}`);
 });

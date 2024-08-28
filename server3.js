@@ -98,7 +98,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             try {
                 sendWebSocketMessage('Navigating to the login page...');
                 console.log("Navigating to the login page...");
-                const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+                await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                     waitUntil: 'networkidle0',
                     timeout: 60000
                 });
@@ -110,12 +110,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         });
 
         await randomSleep(3000, 5000);
-        try {
-            await performLogin(page, jsonData);
-        } catch (error) {
-            console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Invalid Login Credentials");
-        }
+        await performLogin(page, jsonData);
 
         await adjustViewport(page);
 
@@ -210,7 +205,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 60000 });
         } catch (error) {
             console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Name is invalid");
+            throw new Error("Preview page not loaded.");
         }
 
         await adjustViewport(page);
@@ -267,126 +262,171 @@ async function randomSleep(min = 1000, max = 2000) {
     await new Promise(resolve => setTimeout(resolve, sleepTime));
 }
 
-async function performLogin(page, jsonData) {
+async function performLogin(page,jsonData) {
     try {
         console.log("Attempting to login...");
-
-        // Wait for the form to be visible
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
-        // Fill in the login form and handle the submit
         await page.evaluate((jsonData) => {
             const usernameField = document.querySelector('input[name="P101_USERNAME"]');
             const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-            const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
 
-            if (!usernameField || !passwordField || !submitButton) {
+            if (!usernameField || !passwordField ) {
                 throw new Error("Couldn't find login elements");
             }
 
-            // Set the username and password
             usernameField.value = jsonData.State.filingWebsiteUsername;
             passwordField.value = jsonData.State.filingWebsitePassword;
+            const submitButton = document.querySelector('button#P101_LOGIN');
 
-            // Check if `apex` object is available
-            if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
-                // Use apex.submit if available
-                apex.submit({ request: 'LOGIN', validate: true });
-            } else if (submitButton) {
-                // Fallback to clicking the button if `apex.submit` is not available
-                submitButton.click();
-            } else {
-                throw new Error("Submit method or button not found");
-            }
+            submitButton.click();
 
-        }, jsonData);
 
-        // Wait for navigation or some indication that login succeeded
+        },jsonData);
+
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+        log('Login successful.');
+        await page.evaluate(()=>{
+            const submitButton = document.querySelector('button#P101_LOGIN');
 
-        // Check for error messages after navigation
-        const alertSelector = '#t_Alert_Notification';
-        const errorMessage = 'Invalid Login Credentials';
+            submitButton.click();
+
+
+        })
+
+    } catch (e) {
+        log(`Login failed: ${e.message}`);
+        result = { status: 'error', message: e.message };
+
+        console.error("Login failed:", e);
+    }
+}
+async function fillForm(page, data) {
+    try {
+        console.log("Filling out the form");
+
+        // Wait for the form to be visible
+        await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
+        await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
+
+        // Fill out the form fields
+        // await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
+        await page.evaluate((legalName) => {
+            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+            if (nameField) {
+                nameField.value = legalName;
+            } else {
+                throw new Error("Couldn't find the name field");
+            }
+        }, data.Payload.Name.Legal_Name);
         
-        const alertVisible = await page.evaluate((alertSelector) => {
-            const alert = document.querySelector(alertSelector);
-            return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
-        }, alertSelector);
 
-        if (alertVisible) {
-            console.error("Login failed: Invalid Login Credentials");
-            throw new Error("Login failed: Invalid Login Credentials");
-        }
-
-        console.log('Login successful.');
-
-    } catch (error) {
-        console.error("Login failed:", error.message);
-        throw error; // Re-throw the error for higher-level handling
+        console.log('Form filled out.');
+    } catch (err) {
+        console.error("Error during form filling:", err.message);
+        throw err;
     }
 }
 
+async function submitForm(page) {
+    try {
+        console.log("Submitting the form");
 
-// async function fillForm(page, data) {
-//     try {
-//         console.log("Filling out the form");
+        // Click the submit button
+        await page.click('button.t-Button--hot');
 
-//         // Wait for the form to be visible
-//         await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
-//         await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
+        console.log('Submit button clicked.');
 
-//         // Fill out the form fields
-//         await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
+        // Wait for navigation after form submission
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
-//         console.log('Form filled out.');
-//     } catch (err) {
-//         console.error("Error during form filling:", err.message);
-//         throw err;
-//     }
-// }
+        console.log('Navigation after submission complete.');
+    } catch (err) {
+        console.error("Error during form submission or navigation:", err.message);
+        throw err;
+    }
+}
 
-// async function submitForm(page) {
-//     try {
-//         console.log("Submitting the form");
+async function addDataLLC(page, data) {
+    try {
+        // Fill out the form
+        await fillForm(page, data);
 
-//         // Trigger the onclick event of the submit button using the id
-//         await page.evaluate(() => {
-//             const submitButton = document.getElementById('B78886587564901765');
-//             if (submitButton) {
-//                 submitButton.click(); // Trigger the button's click event
-//             } else {
-//                 throw new Error('Submit button not found');
-//             }
-//         });
+        // Submit the form and handle navigation
+        await submitForm(page);
 
-//         console.log('Submit button clicked via onclick event.');
+        // Proceed to the next page or action
+        await fillNextPage(page, data);
 
-//         // Wait for navigation after form submission
-//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+    } catch (e) {
+        // Specific handling for errors
+        if (e.message.includes('Execution context was destroyed')) {
+            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+        } else {
+            console.error("Adding name failed:", e.message);
+        }
 
-//         console.log('Navigation after submission complete.');
-//     } catch (err) {
-//         console.error("Error during form submission or navigation:", err.message);
-//         throw err;
-//     }
-// }
-
+        // Return a specific error message as required
+        throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+    }
+}
 
 // async function addDataLLC(page, data) {
 //     try {
-//         // Fill out the form
-//         await fillForm(page, data);
+//         console.log("Attempting to add the name");
 
-//         // Submit the form and handle navigation
-//         await submitForm(page);
+//         // Wait for the form to be visible
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
-//         // Proceed to the next page or action
-//         await fillNextPage(page, data);
+//         // Define a function to handle form submission and navigation
+//         const performFormActions = async (data) => {
+//             try {
+//                 const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//                 const submitButton = document.querySelector('button.t-Button--hot');
+
+//                 if (!nameField || !submitButton) {
+//                     throw new Error("Couldn't find name field or submit button");
+//                 }
+
+//                 // Set the legal name field
+//                 nameField.value = data.Payload.Name.Legal_Name;
+
+//                 // Delay before clicking the submit button
+//                 await new Promise((resolve) => setTimeout(resolve, 2000)); // Adjust time as needed
+
+//                 // Click the submit button
+//                 submitButton.click();
+
+//                 console.log('Submit button clicked.');
+
+//                 // Delay to allow the page to process the submission
+//                 await new Promise((resolve) => setTimeout(resolve, 5000)); // Adjust time as needed
+
+//             } catch (err) {
+//                 console.error("Error during form actions:", err.message);
+//                 throw err;
+//             }
+//         };
+
+//         // Perform form actions and wait for navigation
+//         await page.evaluate(performFormActions, data);
+
+//         // Wait for the navigation to complete after form submission
+//         try {
+//             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+//             console.log('Name added and continue button clicked.');
+//             await fillNextPage(page, data);
+//         } catch (navError) {
+//             console.error("Navigation error after form submission:", navError.message);
+//             throw navError;
+//         }
 
 //     } catch (e) {
-//         // Specific handling for errors
+//         // Specific handling for "Execution context was destroyed"
 //         if (e.message.includes('Execution context was destroyed')) {
 //             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+//             // Optionally, you could retry the action here
+//             // await addDataLLC(page, data); // Retry logic
 //         } else {
 //             console.error("Adding name failed:", e.message);
 //         }
@@ -396,70 +436,6 @@ async function performLogin(page, jsonData) {
 //     }
 // }
 
-
-async function addDataLLC(page, data) {
-    try {
-        console.log("Attempting to add the name");
-
-        // Wait for the form to be available
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-        // Fill out the form and submit
-        await page.evaluate((data) => {
-            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-            const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-            const submitButton = document.querySelector('button.t-Button--hot');
-
-            if (!nameField || !submitButton) {
-                throw new Error("Couldn't find name field or submit button");
-            }
-
-            // Set the name and checkbox values
-            nameField.value = data.Payload.Name.Legal_Name;
-            if (checkbox) {
-                checkbox.checked = data.checked;
-            }
-
-            // Trigger form submission
-            submitButton.click();
-        }, data);
-
-        // Wait for either navigation or an error message to appear
-        try {
-            // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
-        } catch (err) {
-            console.log("Page did not navigate, likely staying on the same page due to an error.");
-        }
-
-        // Check if the error message about the unacceptable name appears
-        const nameInvalid = await page.evaluate(() => {
-            const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
-        });
-
-        // If the error message exists, throw an error
-        if (nameInvalid) {
-            throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
-        }
-
-        console.log("Name added successfully!");
-        await fillNextPage(page, data)
-
-    } catch (e) {
-        // Specific error handling
-        if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-        } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        } else {
-            console.error("An error occurred:", e.message);
-        }
-
-        // Re-throw the error if necessary
-        throw e;
-    }
-}
 
 
 async function addDataCorp(page, data) {
@@ -814,7 +790,7 @@ async function fillNextPage(page, data) {
     try {
         console.log("Filling the next page...");
 
-        await page.waitForSelector('div#P4_INITIAL_STATEMENT_CONTAINER', { visible: true, timeout: 30000 });
+        await page.waitForSelector('div#P4_INITIAL_STATEMENT_CONTAINER', { visible: true, timeout: 120000 });
 
 
         await page.evaluate((data) => {
@@ -823,8 +799,28 @@ async function fillNextPage(page, data) {
                 radioButtons[0].checked = true;
             }
             
+            const entityDesignations = [
+                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+                "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
+                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+                "Mutual", "Association", "Pvt Ltd"
+            ];
+
             let legalName = data.Payload.Name.Legal_Name;
-            document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
+
+            entityDesignations.forEach(term => {
+                const regex = new RegExp(`\\b${term}\\b`, 'i');
+                legalName = legalName.replace(regex, '').trim();
+            });
+
+            if (legalName.includes("LLC") || legalName.includes("Limited Liability Company") || legalName.includes("LL.C.")) {
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
+            } else {
+                // Append " LLC" if there are no terms and no space
+                document.querySelector('input[name="P4_ENTITY_NAME"]').value = `${legalName} LLC`;
+            }
             // Set the value in the input field
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
