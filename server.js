@@ -19,7 +19,7 @@ const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if nee
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -70,8 +70,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     let browser;
 
     try {
-        const jsonData = cleanData(requestPayload.data);
-        console.log(jsonData);
+        let jsonData = requestPayload.data;
+        jsonData=JSON.parse(jsonData);
+        console.log(jsonData)
+
         log('Data fetched from API successfully.');
 
         browser = await puppeteer.launch({
@@ -168,7 +170,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 console.error("Error getting the second link URL:", error.message);
                 throw new Error("Failed to get the second link URL for LLC.");
             }
-        } else if (jsonData.EntityType.orderShortName === 'Corp') {
+        } else if (jsonData.EntityType.orderShortName === 'CORP') {
             console.log("Getting the URL for Articles of Organization for a Domestic Corporation...");
             try {
                 secondLinkUrl = await page.evaluate(() => {
@@ -497,7 +499,7 @@ async function addDataLLC(page, data) {
                 const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
                 return errorMessage ? errorMessage.innerText : '';
             });
-            throw new Error(`Entity name "${data.Payload.Name.Legal_Name}" is invalid. Error: ${errorText}`);
+            throw new Error(`LLC name "${data.Payload.Name.Legal_Name}" is invalid itv should end with LLC or Limited Liability Company or LL.C. . Error: ${errorText}`);
         }
 
         console.log("Entity name is valid.");
@@ -505,22 +507,34 @@ async function addDataLLC(page, data) {
        
 
         console.log("Name added successfully!");
-        await fillNextPage(page, data)
+        await fillNextPage(page, data);
+
+        return { success: true, message: "Name added successfully" };
+
 
     } catch (e) {
         // Specific error handling
+        let errorResponse = {
+            success: false,
+            error: e.message
+        };
         if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
         } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        }else if (e.message.startsWith('DuplicateEntityError:')) {
-            console.error("Duplicate entity found:", e.message);
-        } else {
-            console.error("An error occurred:", e.message);
+            errorResponse.error = e.message;
+        } else if (e.message.startsWith('DuplicateEntityError:')) {
+            errorResponse.error = "Duplicate entity found: " + e.message;
+            try {
+                const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                errorResponse.entityDetails = entityDetails;
+            } catch (parseError) {
+                console.error("Failed to parse entity details:", parseError);
+            }
         }
 
+        console.error("An error occurred:", errorResponse.error);
+        return errorResponse;
         // Re-throw the error if necessary
-        throw e;
     }
 }
 
@@ -542,7 +556,7 @@ async function addDataCorp(page, data) {
             }
 
             // Set the name and checkbox values
-            nameField.value = data.Payload.Name.Legal_Name;
+            nameField.value = data.Payload.Name.CD_Legal_Name;
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
@@ -622,7 +636,7 @@ async function addDataCorp(page, data) {
                 const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
                 return errorMessage ? errorMessage.innerText : '';
             });
-            throw new Error(`Entity name "${data.Payload.Name.Legal_Name}" is invalid. Error: ${errorText}`);
+            throw new Error(`Corp Entity name "${data.Payload.Name.CD_Legal_Name}" is invalid it should end with Corporation or Corp. or Limited or Ltd. or  Incorporated or Inc.  Error: ${errorText}`);
         }
 
         console.log("Entity name is valid.");
@@ -632,20 +646,33 @@ async function addDataCorp(page, data) {
         console.log("Name added successfully!");
         await fillNextPageCorp(page, data)
 
+        return { success: true, message: "Name added successfully" };
+
+
     } catch (e) {
         // Specific error handling
+        // Specific error handling
+        let errorResponse = {
+            success: false,
+            error: e.message
+        };
         if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-        } else if (e.message.startsWith('DuplicateEntityError:')) {
-            console.error("Duplicate entity found:", e.message);
+            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
         } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        } else {
-            console.error("An error occurred:", e.message);
+            errorResponse.error = e.message;
+        } else if (e.message.startsWith('DuplicateEntityError:')) {
+            errorResponse.error = "Duplicate entity found: " + e.message;
+            try {
+                const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                errorResponse.entityDetails = entityDetails;
+            } catch (parseError) {
+                console.error("Failed to parse entity details:", parseError);
+            }
         }
 
-        // Re-throw the error if necessary
-        throw e;
+        console.error("An error occurred:", errorResponse.error);
+        return errorResponse;
+        
     }
 }
 
@@ -908,7 +935,7 @@ async function fillNextPageCorp(page, data) {
             const opt2 = document.querySelector("input#P3_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
-                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -932,7 +959,7 @@ async function fillNextPageCorp(page, data) {
                 const check=document.querySelector('#P3_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registerd_Agent.Name;
+                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registerd_Agent.RA_Name;
                 document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registerd_Agent.Address.RA_Address_Line1;
                 document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registerd_Agent.Address.RA_Address_Line2;
                 document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registerd_Agent.Address.RA_City;
@@ -975,11 +1002,11 @@ async function fillNextPageCorp(page, data) {
 
             const stockInfo = data.Payload.Stock_Information;
             console.log("Stock information is :=" ,stockInfo)
-const shareValue = stockInfo.Share_Par_Value;
+const shareValue = stockInfo.SI_Share_Par_Value;
 
 const stockType = shareValue !== undefined && shareValue !== null ? 'PV' : 'NPV';
 
-document.querySelector('input[name="P3_NUM_SHARES"]').value = stockInfo.No_Of_Shares;
+document.querySelector('input[name="P3_NUM_SHARES"]').value = stockInfo.SI_No_Of_Shares;
 
 const stockTypeSelect = document.querySelector('#P3_STOCK_TYPE');
 stockTypeSelect.value = stockType;
@@ -1169,7 +1196,7 @@ async function fillNextPage(page, data) {
                 const check=document.querySelector('#P4_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.Name;
+                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
                 document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
                 document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
                 document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
