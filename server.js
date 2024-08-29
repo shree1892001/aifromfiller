@@ -207,16 +207,16 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         }
         console.log("Waiting for the preview page to be loaded...");
         try {
-            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 60000 });
+            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 10000 });
         } catch (error) {
             console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Name is invalid");
+            throw new Error("Entity is in invalid format it should be contain LLC/ Limited Liability Company / LL.C. for the LLC and ");
         }
 
         await adjustViewport(page);
 
         log("Next step completed and preview loaded.");
-        await randomSleep(180000, 220000);
+        await randomSleep(10000000, 2200000000);
 
     } catch (e) {
         console.error("Error running Puppeteer:", e);
@@ -424,7 +424,6 @@ async function addDataLLC(page, data) {
             submitButton.click();
         }, data);
 
-        // Wait for either navigation or an error message to appear
         try {
             // Wait for navigation after form submission
             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
@@ -433,15 +432,50 @@ async function addDataLLC(page, data) {
         }
 
         // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+        const isDuplicate =await page.evaluate(()=>{
+
+            const table=document.querySelector('table[id$="_orig"');
+            if(table){
+                const r=table.querySelectorAll('tbody tr'); 
+                return r.length > 0;
+              }
+
+            return false; 
+        }); 
+        if (isDuplicate) {
+            const entityDetails = await page.evaluate(() => {
+                const table = document.querySelector('table[id$="_orig"]');
+                const row = table.querySelector('tbody tr');
+                const cells = row.querySelectorAll('td');
+                return {
+                    name: cells[0].textContent.trim(),
+                    dosid: cells[1].textContent.trim(),
+                    formationDate: cells[2].textContent.trim(),
+                    county: cells[3].textContent.trim()
+                };
+            });
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists enter the new entity name`);
+        }
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+            return errorMessage !== null;  // Returns true if any error message is present
         });
 
-        // If the error message exists, throw an error
         if (nameInvalid) {
-            throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+            await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
+
+            const errorText = await page.evaluate(() => {
+                const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+                return errorMessage ? errorMessage.innerText : '';
+            });
+            throw new Error(`Entity name "${data.Payload.Name.Legal_Name}" is invalid. Error: ${errorText}`);
         }
+
+        console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
 
         console.log("Name added successfully!");
         await fillNextPage(page, data)
@@ -450,6 +484,108 @@ async function addDataLLC(page, data) {
         // Specific error handling
         if (e.message.includes('Execution context was destroyed')) {
             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+        } else if (e.message.includes('Name is Invalid')) {
+            console.error(e.message);
+        }else if (e.message.startsWith('DuplicateEntityError:')) {
+            console.error("Duplicate entity found:", e.message);
+        } else {
+            console.error("An error occurred:", e.message);
+        }
+
+        // Re-throw the error if necessary
+        throw e;
+    }
+}
+
+async function addDataCorp(page, data) {
+    try {
+        console.log("Attempting to add the name");
+
+        // Wait for the form to be available
+        await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+        // Fill out the form and submit
+        await page.evaluate((data) => {
+            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+            const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+            const submitButton = document.querySelector('button.t-Button--hot');
+
+            if (!nameField || !submitButton) {
+                throw new Error("Couldn't find name field or submit button");
+            }
+
+            // Set the name and checkbox values
+            nameField.value = data.Payload.Name.Legal_Name;
+            if (checkbox) {
+                checkbox.checked = data.checked;
+            }
+
+            // Trigger form submission
+            submitButton.click();
+        }, data);
+
+        try {
+            // Wait for navigation after form submission
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+        } catch (err) {
+            console.log("Page did not navigate, likely staying on the same page due to an error.");
+        }
+
+        // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+        const isDuplicate =await page.evaluate(()=>{
+
+            const table=document.querySelector('table[id$="_orig"');
+            if(table){
+                const r=table.querySelectorAll('tbody tr'); 
+                return r.length > 0;
+              }
+
+            return false; 
+        }); 
+        if (isDuplicate) {
+            const entityDetails = await page.evaluate(() => {
+                const table = document.querySelector('table[id$="_orig"]');
+                const row = table.querySelector('tbody tr');
+                const cells = row.querySelectorAll('td');
+                return {
+                    name: cells[0].textContent.trim(),
+                    dosid: cells[1].textContent.trim(),
+                    formationDate: cells[2].textContent.trim(),
+                    county: cells[3].textContent.trim()
+                };
+            });
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists enter the new entity name`);
+        }
+        const nameInvalid = await page.evaluate(() => {
+            const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+            return errorMessage !== null;  // Returns true if any error message is present
+        });
+
+        if (nameInvalid) {
+            await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
+
+            const errorText = await page.evaluate(() => {
+                const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+                return errorMessage ? errorMessage.innerText : '';
+            });
+            throw new Error(`Entity name "${data.Payload.Name.Legal_Name}" is invalid. Error: ${errorText}`);
+        }
+
+        console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
+
+        console.log("Name added successfully!");
+        await fillNextPageCorp(page, data)
+
+    } catch (e) {
+        // Specific error handling
+        if (e.message.includes('Execution context was destroyed')) {
+            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+        } else if (e.message.startsWith('DuplicateEntityError:')) {
+            console.error("Duplicate entity found:", e.message);
         } else if (e.message.includes('Name is Invalid')) {
             console.error(e.message);
         } else {
@@ -462,97 +598,165 @@ async function addDataLLC(page, data) {
 }
 
 
-async function addDataCorp(page, data) {
-    try {
-        console.log("Attempting to add the name");
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-        await page.evaluate((data) => {
-            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-            const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-            const submitButton = document.querySelector('button.t-Button--hot');
 
 
-            if (!nameField || !submitButton) {
-                throw new Error("Couldn't find name field or submit button");
-            }
-            // //Corporation, Corp., Limited, Ltd., Incorporated, Inc.
-            // if(data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc") ){
-            //     nameField.value = data.Payload.Name.Legal_Name;
+// async function addDataCorp(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
 
-            // }
-            // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc")) && data.Payload.Name.Legal_Name.includes(" "))){
-            //     const error = new Error("Company name does not contain any allowed terms such as 'Corporation, Corp., Limited, Ltd., Incorporated, Inc.'");
-            //     error.statusCode = 400 ; 
-            //     throw error;
-            // } 
-            // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc"))) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
-            //     nameField.value = data.Payload.Name.Legal_Name;
-            //     nameField.value=nameField.value+" Corp."
-            //     // const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
-            //     // error.statusCode = 400 ; 
-            //     // throw error;
+//         // Wait for the form to be available
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         // Fill out the form and submit
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
+
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+
+//             // Set the name and checkbox values
+//             nameField.value = data.Payload.Name.Legal_Name;
+//             if (checkbox) {
+//                 checkbox.checked = data.checked;
+//             }
+
+//             // Trigger form submission
+//             submitButton.click();
+//         }, data);
+
+//         // Wait for either navigation or an error message to appear
+//         try {
+//             // Wait for navigation after form submission
+//             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+//         } catch (err) {
+//             console.log("Page did not navigate, likely staying on the same page due to an error.");
+//         }
+
+//         // Check if the error message about the unacceptable name appears
+//         await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+//         const nameInvalid = await page.evaluate(() => {
+//             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+//             return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+//         });
+
+//         // If the error message exists, throw an error
+//         if (nameInvalid) {
+//             throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+//         }
+
+//         console.log("Name added successfully!");
+//         await fillNextPageCorp(page, data)
+
+//     } catch (e) {
+//         // Specific error handling
+//         if (e.message.includes('Execution context was destroyed')) {
+//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+//         } else if (e.message.includes('Name is Invalid')) {
+//             console.error(e.message);
+//         } else {
+//             console.error("An error occurred:", e.message);
+//         }
+
+//         // Re-throw the error if necessary
+//         throw e;
+//     }
+// }
+
+// async function addDataCorp(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
 
 
-            // } 
-            const entityDesignations = [
-                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
-               "LLC","Limited Liability Company","L.L.C.",
-               "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
-               "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
-               "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
-               "Mutual", "Association","Pvt Ltd"
-           ];
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+//             // //Corporation, Corp., Limited, Ltd., Incorporated, Inc.
+//             // if(data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc") ){
+//             //     nameField.value = data.Payload.Name.Legal_Name;
+
+//             // }
+//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc")) && data.Payload.Name.Legal_Name.includes(" "))){
+//             //     const error = new Error("Company name does not contain any allowed terms such as 'Corporation, Corp., Limited, Ltd., Incorporated, Inc.'");
+//             //     error.statusCode = 400 ; 
+//             //     throw error;
+//             // } 
+//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc"))) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
+//             //     nameField.value = data.Payload.Name.Legal_Name;
+//             //     nameField.value=nameField.value+" Corp."
+//             //     // const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
+//             //     // error.statusCode = 400 ; 
+//             //     // throw error;
+
+
+//             // } 
+//             const entityDesignations = [
+//                 "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+//                "LLC","Limited Liability Company","L.L.C.",
+//                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+//                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+//                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+//                "Mutual", "Association","Pvt Ltd"
+//            ];
            
-           try {
-               let legalName = data.Payload.Name.Legal_Name;
+//            try {
+//                let legalName = data.Payload.Name.Legal_Name;
            
-               entityDesignations.forEach(term => {
-                   const regex = new RegExp(`\\b${term}\\b`, 'i');
-                   legalName = legalName.replace(regex, '').trim();
-               });
+//                entityDesignations.forEach(term => {
+//                    const regex = new RegExp(`\\b${term}\\b`, 'i');
+//                    legalName = legalName.replace(regex, '').trim();
+//                });
            
-               if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
-                   nameField.value = legalName;
-               } else {
-                   nameField.value = `${legalName} Corp.`;
-               }
+//                if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+//                    nameField.value = legalName;
+//                } else {
+//                    nameField.value = `${legalName} Corp.`;
+//                }
 
 
-            if (checkbox) {
-                checkbox.checked = data.checked;
-            }
-            submitButton.click();
-        }  catch (e) {
-            return { status: 'error', message: e.message };
-        }
+//             if (checkbox) {
+//                 checkbox.checked = data.checked;
+//             }
+//             submitButton.click();
+//         }  catch (e) {
+//             return { status: 'error', message: e.message };
+//         }
 
 
-        }, data);
+//         }, data);
 
     
 
 
-        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-        log('Name added and continue button clicked.');
+//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+//         log('Name added and continue button clicked.');
 
-        await fillNextPageCorp(page, data);
-    } catch (e) {
-        await page.evaluate((message) => {
-            const errorDiv = document.createElement('div');
-            errorDiv.textContent = `Adding name failed: ${message}`;
-            errorDiv.style.position = 'fixed';
-            errorDiv.style.top = '0';
-            errorDiv.style.left = '0';
-            errorDiv.style.backgroundColor = 'red';
-            errorDiv.style.color = 'white';
-            errorDiv.style.padding = '10px';
-            errorDiv.style.zIndex = '1000';
-            document.body.appendChild(errorDiv);
-        }, e.message);
-        console.error("Adding name failed:", e);
-    }
-}
+//         await fillNextPageCorp(page, data);
+//     } catch (e) {
+//         await page.evaluate((message) => {
+//             const errorDiv = document.createElement('div');
+//             errorDiv.textContent = `Adding name failed: ${message}`;
+//             errorDiv.style.position = 'fixed';
+//             errorDiv.style.top = '0';
+//             errorDiv.style.left = '0';
+//             errorDiv.style.backgroundColor = 'red';
+//             errorDiv.style.color = 'white';
+//             errorDiv.style.padding = '10px';
+//             errorDiv.style.zIndex = '1000';
+//             document.body.appendChild(errorDiv);
+//         }, e.message);
+//         console.error("Adding name failed:", e);
+//     }
+// }
 
 async function fillNextPageCorp(page, data) {
     try {
@@ -575,19 +779,20 @@ async function fillNextPageCorp(page, data) {
             ];
 
             let legalName = data.Payload.Name.Legal_Name;
+            document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
 
             entityDesignations.forEach(term => {
                 const regex = new RegExp(`\\b${term}\\b`, 'i');
                 legalName = legalName.replace(regex, '').trim();
             });
 
-            if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
-                document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
-            } else {
-                // Append " LLC" if there are no terms and no space
-                document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
-            }
-            // document.querySelector('#P3_COUNTY').value = "4";
+            // if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
+            // } else {
+            //     // Append " LLC" if there are no terms and no space
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
+            // }
+            // // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
             const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
