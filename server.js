@@ -107,7 +107,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 console.error("Error navigating to the login page:", error.message);
                 throw new Error("Navigation to the login page failed.");
             }
-        });
+        },5,page);
 
         await randomSleep(3000, 5000);
         try {
@@ -445,10 +445,31 @@ async function addDataLLC(page, data) {
             return false; 
         }); 
         if (isDuplicate) {
+            await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
+
             const entityDetails = await page.evaluate(() => {
                 const table = document.querySelector('table[id$="_orig"]');
-                const row = table.querySelector('tbody tr');
+                if (!table) {
+                    console.error("Table not found");
+                    return null;
+                }
+                console.log("Table found:", table);
+        
+                // Change: Select the second row (first data row) instead of the first row
+                const row = table.querySelectorAll('tbody tr')[1];
+                if (!row) {
+                    console.error("Row not found");
+                    return null;
+                }
+                console.log("Row found:", row);
+        
                 const cells = row.querySelectorAll('td');
+                if (cells.length < 4) {
+                    console.error("Not enough cells found");
+                    return null;
+                }
+                console.log("Cells found:", cells);
+        
                 return {
                     name: cells[0].textContent.trim(),
                     dosid: cells[1].textContent.trim(),
@@ -456,8 +477,14 @@ async function addDataLLC(page, data) {
                     county: cells[3].textContent.trim()
                 };
             });
-            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists enter the new entity name`);
+        
+            if (!entityDetails) {
+                throw new Error("Failed to retrieve entity details from the table.");
+            }
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
         }
+        
+        
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
             return errorMessage !== null;  // Returns true if any error message is present
@@ -545,10 +572,31 @@ async function addDataCorp(page, data) {
             return false; 
         }); 
         if (isDuplicate) {
+            await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
+
             const entityDetails = await page.evaluate(() => {
                 const table = document.querySelector('table[id$="_orig"]');
-                const row = table.querySelector('tbody tr');
+                if (!table) {
+                    console.error("Table not found");
+                    return null;
+                }
+                console.log("Table found:", table);
+        
+                // Change: Select the second row (first data row) instead of the first row
+                const row = table.querySelectorAll('tbody tr')[1];
+                if (!row) {
+                    console.error("Row not found");
+                    return null;
+                }
+                console.log("Row found:", row);
+        
                 const cells = row.querySelectorAll('td');
+                if (cells.length < 4) {
+                    console.error("Not enough cells found");
+                    return null;
+                }
+                console.log("Cells found:", cells);
+        
                 return {
                     name: cells[0].textContent.trim(),
                     dosid: cells[1].textContent.trim(),
@@ -556,7 +604,11 @@ async function addDataCorp(page, data) {
                     county: cells[3].textContent.trim()
                 };
             });
-            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists enter the new entity name`);
+        
+            if (!entityDetails) {
+                throw new Error("Failed to retrieve entity details from the table.");
+            }
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
         }
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
@@ -769,22 +821,15 @@ async function fillNextPageCorp(page, data) {
 
             // document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
 
-            const entityDesignations = [
-                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
-                "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
-                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
-                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
-                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
-                "Mutual", "Association", "Pvt Ltd"
-            ];
+            
 
             let legalName = data.Payload.Name.Legal_Name;
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
 
-            entityDesignations.forEach(term => {
-                const regex = new RegExp(`\\b${term}\\b`, 'i');
-                legalName = legalName.replace(regex, '').trim();
-            });
+            // entityDesignations.forEach(term => {
+            //     const regex = new RegExp(`\\b${term}\\b`, 'i');
+            //     legalName = legalName.replace(regex, '').trim();
+            // });
 
             // if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
             //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
@@ -1185,11 +1230,15 @@ function isNetworkError(error) {
     return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET','ERR_CONNECTION_RESET','ERR_CONNECTION_REFUSED'].includes(error.code);
 }
 
-async function retry(fn, retries = 3) {
+async function retry(fn, retries = 3,page) {
     for (let i = 0; i < retries; i++) {
         try {
             return await fn();
         } catch (error) {
+            if(isNetworkError(error)){
+                console.error(`Network error occured : ${error.message} ...Error reloading the script `)
+                await page.reload({waitUntil : 'networkidle0' })
+            }
             if (i === retries - 1) throw error;
         }
     }
