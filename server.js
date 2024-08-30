@@ -236,7 +236,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 app.post('/run-puppeteer', async (req, res) => {
     shouldTriggerAutomation = true; 
 
-    const jsonData = req.body;
+    const jsonData = fillNextPage;
 
     if (!jsonData) {
         res.status(400).send('API endpoint and request payload are required.');
@@ -850,7 +850,7 @@ async function fillNextPageCorp(page, data) {
 
             
 
-            let legalName = data.Payload.Name.Legal_Name;
+            let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
 
             // entityDesignations.forEach(term => {
@@ -867,7 +867,7 @@ async function fillNextPageCorp(page, data) {
             // // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
@@ -945,7 +945,7 @@ async function fillNextPageCorp(page, data) {
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
-                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -955,15 +955,15 @@ async function fillNextPageCorp(page, data) {
             const agentOpt1 = document.querySelector("input#P3_RA_ADDR_OPTION_0");
             const agentOpt2 = document.querySelector("input#P3_RA_ADDR_OPTION_1");
 
-            if (data.Payload.Registerd_Agent) {
+            if (data.Payload.Registered_Agent) {
                 const check=document.querySelector('#P3_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registerd_Agent.RA_Name;
-                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registerd_Agent.Address.RA_Address_Line1;
-                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registerd_Agent.Address.RA_Address_Line2;
-                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registerd_Agent.Address.RA_City;
-                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registerd_Agent.Address.RA_Postal_Code;
+                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
+                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
+                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
+                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
+                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P3_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -1035,7 +1035,7 @@ if (clickedButton === 'ServiceCompany') {
 } else if (clickedButton === 'SOP') {
   // Populate fields for SOP
   
-  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
+  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
@@ -1044,7 +1044,7 @@ if (clickedButton === 'ServiceCompany') {
 } else if (clickedButton === 'Incorporator') {
   // Populate fields for Incorporator
   
-  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
+  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
@@ -1100,14 +1100,14 @@ async function fillNextPage(page, data) {
                 radioButtons[0].checked = true;
             }
             
-            let legalName = data.Payload.Name.Legal_Name;
+            let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
             // Set the value in the input field
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
             // document.querySelector('#P4_COUNTY').value = "4";
             const dropdown= document.querySelector('#P4_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
@@ -1118,7 +1118,7 @@ async function fillNextPage(page, data) {
             // const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
             // liability_statement.scrollIntoView()
 
-            // if (effectiveDate) {
+            // if (data.Payload.effectiveDate) {
             //     effectiveDate.click();
             //     const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
             //     const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
@@ -1172,7 +1172,7 @@ async function fillNextPage(page, data) {
             const opt2 = document.querySelector("input#P4_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -1182,7 +1182,7 @@ async function fillNextPage(page, data) {
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -1209,13 +1209,13 @@ async function fillNextPage(page, data) {
             }
         }
 
-            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
             document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
             document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
-            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
 
-            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
             document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
             document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
