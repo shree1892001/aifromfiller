@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const axios = require('axios');
 const fs = require('fs');
-const websock = require('ws'); 
+// const websock = require('ws'); 
 const cors = require('cors');
 
 const path = require('path');
@@ -34,26 +34,6 @@ const log = (message) => {
     const timestamp = new Date().toISOString();
     logStream.write(`[${timestamp}] ${message}\n`);
 };
-const wss = new websock.Server({ port: 8080 });
-
-let wsClient;
-
-wss.on('connection', (ws) => {
-    console.log('Client connected');
-    wsClient = ws;
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
-        wsClient = null;
-    });
-});
-
-function sendWebSocketMessage(message) {
-    if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-        wsClient.send(JSON.stringify({ message }));
-    }
-}
-let clients = [];
 
 
 
@@ -96,21 +76,21 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
         await retry(async () => {
             try {
-                sendWebSocketMessage('Navigating to the login page...');
-                console.log("Navigating to the login page...");
-                await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+                // sendWebSocketMessage('Navigating to the login page...');
+                console.log("Navigating to the Landing page...");
+                await page.goto("https://efile.sunbiz.org/llc_file.html", {
                     waitUntil: 'networkidle0',
                     timeout: 60000
                 });
-                log('Login page loaded.');
+                log('Landing Page Loaded');
             } catch (error) {
-                console.error("Error navigating to the login page:", error.message);
-                throw new Error("Navigation to the login page failed.");
+                console.error("Error navigating to the Landing page:", error.message);
+                throw new Error("Navigation to the Landing page failed.");
             }
-        });
+        },5,page);
 
         await randomSleep(3000, 5000);
-        await performLogin(page, jsonData);
+        await performEventsonLandingPage(page, jsonData);
 
         await adjustViewport(page);
 
@@ -262,71 +242,52 @@ async function randomSleep(min = 1000, max = 2000) {
     await new Promise(resolve => setTimeout(resolve, sleepTime));
 }
 
-async function performLogin(page,jsonData) {
+async function performEventsonLandingPage(page) {
     try {
-        console.log("Attempting to login...");
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-        await page.evaluate((jsonData) => {
-            const usernameField = document.querySelector('input[name="P101_USERNAME"]');
-            const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-
-            if (!usernameField || !passwordField ) {
-                throw new Error("Couldn't find login elements");
-            }
-
-            usernameField.value = jsonData.State.filingWebsiteUsername;
-            passwordField.value = jsonData.State.filingWebsitePassword;
-            const submitButton = document.querySelector('button#P101_LOGIN');
-
-            submitButton.click();
-
-
-        },jsonData);
-
-        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-        log('Login successful.');
-        await page.evaluate(()=>{
-            const submitButton = document.querySelector('button#P101_LOGIN');
-
-            submitButton.click();
-
-
-        })
-
-    } catch (e) {
-        log(`Login failed: ${e.message}`);
-        result = { status: 'error', message: e.message };
-
-        console.error("Login failed:", e);
-    }
-}
-async function fillForm(page, data) {
-    try {
-        console.log("Filling out the form");
+        console.log("Attempting to interact with the landing page...");
 
         // Wait for the form to be visible
-        await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
-        await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
+        await page.waitForSelector('form', { visible: true, timeout: 120000 });
+        console.log("Form found.");
 
-        // Fill out the form fields
-        // await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
-        await page.evaluate((legalName) => {
-            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-            if (nameField) {
-                nameField.value = legalName;
-            } else {
-                throw new Error("Couldn't find the name field");
-            }
-        }, data.Payload.Name.Legal_Name);
-        
+        // Debugging: Check if the checkbox exists before clicking
+        const checkboxExists = await page.evaluate(() => {
+            const checkbox = document.querySelector('input[name="Disclaimer"]');
+            console.log("Checkbox found:", !!checkbox);
+            return !!checkbox;
+        });
 
-        console.log('Form filled out.');
-    } catch (err) {
-        console.error("Error during form filling:", err.message);
-        throw err;
+        if (!checkboxExists) {
+            throw new Error("Checkbox not found.");
+        }
+
+        await page.click('input[name="Disclaimer"]');
+        console.log("Disclaimer checkbox checked.");
+
+        // Debugging: Check if the submit button exists before clicking
+        const submitButtonExists = await page.evaluate(() => {
+            const submitButton = document.querySelector('input[name="submit"]');
+            console.log("Submit button found:", !!submitButton);
+            return !!submitButton;
+        });
+
+        if (!submitButtonExists) {
+            throw new Error("Submit button not found.");
+        }
+
+        await page.click('input[name="submit"]');
+        console.log("Submit button clicked.");
+
+        // Wait for the navigation to complete
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+        console.log('Form submission successful.');
+
+    } catch (e) {
+        console.error("Form submission failed:", e.message);
+        return { status: 'error', message: e.message };
     }
 }
+
 
 async function submitForm(page) {
     try {

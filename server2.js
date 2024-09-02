@@ -104,7 +104,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                 waitUntil: 'networkidle0',
                 timeout: 60000
-            });
+            },5,page);
             log('Login page loaded.');
         });
 

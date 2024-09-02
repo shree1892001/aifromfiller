@@ -19,7 +19,7 @@ const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if nee
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -34,26 +34,7 @@ const log = (message) => {
     const timestamp = new Date().toISOString();
     logStream.write(`[${timestamp}] ${message}\n`);
 };
-const wss = new websock.Server({ port: 8080 });
 
-let wsClient;
-
-wss.on('connection', (ws) => {
-    console.log('Client connected');
-    wsClient = ws;
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
-        wsClient = null;
-    });
-});
-
-function sendWebSocketMessage(message) {
-    if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-        wsClient.send(JSON.stringify({ message }));
-    }
-}
-let clients = [];
 
 
 
@@ -70,8 +51,12 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     let browser;
 
     try {
-        const jsonData = cleanData(requestPayload.data);
-        console.log(jsonData);
+        // let jsonData = requestPayload.data;
+        let jsonData = requestPayload;
+
+        // jsonData=JSON.parse(jsonData)
+        console.log(jsonData)
+
         log('Data fetched from API successfully.');
 
         browser = await puppeteer.launch({
@@ -93,21 +78,190 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         const page = await browser.newPage();
         await setupPage(page);
         await adjustViewport(page);
+        console.log(jsonData);
+        if(jsonData.State.stateFullDesc=="New-York"){
+            await handleNy(page,jsonData); 
+        }
+        else if(jsonData.State.stateFullDesc=="Florida"){
+            await handleFL(page,jsonData); 
+        }
 
+        async function handleFL(page, data) {
+            await retry(async () => {
+              try {
+                console.log("Navigating to the Landing page...");
+                await page.goto("https://efile.sunbiz.org/llc_file.html", {
+                  waitUntil: 'networkidle0',
+                  timeout: 60000
+                });
+                console.log('Landing Page Loaded');
+              } catch (error) {
+                console.error("Error navigating to the Landing page:", error.message);
+                throw new Error("Navigation to the Landing page failed.");
+              }
+            }, 5, page);
+          
+            await randomSleep(3000, 5000);
+            await performEventsonLandingPage(page);
+          
+            await adjustViewport(page);
+          
+            console.log("Waiting for the list to appear...");
+          
+            async function performEventsonLandingPage(page) {
+              try {
+                console.log("Attempting to interact with the landing page...");
+          
+                await page.waitForSelector('form', { visible: true, timeout: 120000 });
+                console.log("Form found.");
+          
+                const checkboxExists = await page.evaluate(() => {
+                  const checkbox = document.querySelector('input[name="Disclaimer"]');
+                  console.log("Checkbox found:", !!checkbox);
+                  return !!checkbox;
+                });
+          
+                if (!checkboxExists) {
+                  throw new Error("Checkbox not found.");
+                }
+          
+                await page.click('input[name="Disclaimer"]');
+                console.log("Disclaimer checkbox checked.");
+          
+                const submitButtonExists = await page.evaluate(() => {
+                  const submitButton = document.querySelector('input[name="submit"]');
+                  console.log("Submit button found:", !!submitButton);
+                  return !!submitButton;
+                });
+          
+                if (!submitButtonExists) {
+                  throw new Error("Submit button not found.");
+                }
+          
+                await page.click('input[name="submit"]');
+                console.log("Submit button clicked.");
+          
+                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+                console.log('Form submission successful.');
+          
+              } catch (e) {
+                console.error("Form submission failed:", e.message);
+                return { status: 'error', message: e.message };
+              }
+            }
+          
+            await adjustViewport(page);
+          
+            console.log("Next step completed and preview loaded.");
+            await randomSleep(18000, 22000);
+          
+            await page.evaluate(() => {
+              document.querySelector('input[name="filing_type"]').value = 'LLC';
+              document.querySelector('input[name="track_number"]').value = '100435715291';
+              document.querySelector('input[name="menu_function"]').value = 'ADD';
+            });
+          
+            if (data.effectiveDate) {
+              await page.type('#eff_date_mm', data.effectiveDate.month);
+              await randomSleep(1000, 3000);
+              await page.type('#eff_date_dd', data.effectiveDate.day);
+              await randomSleep(1000, 3000);
+              await page.type('#eff_date_yyyy', data.effectiveDate.year);
+              await randomSleep(1000, 3000);
+            }
+          
+            if (data.certificateOfStatus) {
+              await page.click('#cos_num_flag');
+              await randomSleep(1000, 3000);
+            }
+            if (data.certifiedCopy) {
+              await page.click('#cert_num_flag');
+              await randomSleep(1000, 3000);
+            }
+          
+            await page.type('#corp_name', data.llcName);
+            await randomSleep(1000, 3000);
+          
+            await page.type('#princ_addr1', data.principalPlace.address);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_addr2', data.principalPlace.suite);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_city', data.principalPlace.city);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_st', data.principalPlace.state);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_zip', data.principalPlace.zip);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_cntry', data.principalPlace.country);
+            await randomSleep(1000, 3000);
+          
+            if (data.mailingAddressSameAsPrincipal) {
+              await page.click('#same_addr_flag');
+              await randomSleep(1000, 3000);
+            } else {
+              await page.type('#mail_addr1', data.mailingAddress.address);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_addr2', data.mailingAddress.suite);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_city', data.mailingAddress.city);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_st', data.mailingAddress.state);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_zip', data.mailingAddress.zip);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_cntry', data.mailingAddress.country);
+              await randomSleep(1000, 3000);
+            }
+          
+            if (data.Registered_Agent.Name.lastName) {
+              await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
+              await randomSleep(1000, 3000);
+
+            }
+            else if(data.Registered_Agent.Name.Corp_Name){
+                  await page.type('input#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('input#ra_addr1',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('input#ra_addr2',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+
+
+
+            }
+          
+            if (data.purpose) {
+              await page.type('#purpose', data.purpose);
+              await randomSleep(1000, 3000);
+            }
+          
+            await page.evaluate(() => {
+              document.querySelector('form[name="filingform"]').submit();
+            });
+          
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+            console.log('Form submitted successfully');
+          }
+        async function handleNy(page,jsonData){
         await retry(async () => {
             try {
-                sendWebSocketMessage('Navigating to the login page...');
+                // sendWebSocketMessage('Navigating to the login page...');
                 console.log("Navigating to the login page...");
-                const response = await page.goto(jsonData.State.StateUrl, {
+                const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                     waitUntil: 'networkidle0',
-                    timeout: 600000
+                    timeout: 60000
                 });
                 log('Login page loaded.');
             } catch (error) {
                 console.error("Error navigating to the login page:", error.message);
                 throw new Error("Navigation to the login page failed.");
             }
-        });
+        },5,page);
 
         await randomSleep(3000, 5000);
         try {
@@ -168,7 +322,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 console.error("Error getting the second link URL:", error.message);
                 throw new Error("Failed to get the second link URL for LLC.");
             }
-        } else if (jsonData.EntityType.orderShortName === 'Corp') {
+        } else if (jsonData.EntityType.orderShortName === 'CORP') {
             console.log("Getting the URL for Articles of Organization for a Domestic Corporation...");
             try {
                 secondLinkUrl = await page.evaluate(() => {
@@ -207,16 +361,17 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         }
         console.log("Waiting for the preview page to be loaded...");
         try {
-            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 60000 });
+            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 10000 });
         } catch (error) {
             console.error("Error waiting for the preview page:", error.message);
-            throw new Error("Entity is invalid ");
+            throw new Error("Entity is in invalid format it should be contain LLC/ Limited Liability Company / LL.C. for the LLC and ");
         }
 
         await adjustViewport(page);
 
         log("Next step completed and preview loaded.");
         await randomSleep(10000000, 2200000000);
+    }
 
     } catch (e) {
         console.error("Error running Puppeteer:", e);
@@ -228,7 +383,9 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         if (browser) {
             await browser.close();
         }
+
     }
+    
 }
 
 app.post('/run-puppeteer', async (req, res) => {
@@ -415,7 +572,7 @@ async function addDataLLC(page, data) {
             }
 
             // Set the name and checkbox values
-            nameField.value = data.Payload.Name.Legal_Name;
+            nameField.value = data.Payload.Name.CD_Legal_Name;
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
@@ -424,52 +581,124 @@ async function addDataLLC(page, data) {
             submitButton.click();
         }, data);
 
-        // Wait for either navigation or an error message to appear
         try {
             // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
 
         // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+        const isDuplicate =await page.evaluate(()=>{
+
+            const table=document.querySelector('table[id$="_orig"');
+            if(table){
+                const r=table.querySelectorAll('tbody tr'); 
+                return r.length > 0;
+              }
+
+            return false; 
+        }); 
+        if (isDuplicate) {
+            await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
+
+            const entityDetails = await page.evaluate(() => {
+                const table = document.querySelector('table[id$="_orig"]');
+                if (!table) {
+                    console.error("Table not found");
+                    return null;
+                }
+                console.log("Table found:", table);
+        
+                // Change: Select the second row (first data row) instead of the first row
+                const row = table.querySelectorAll('tbody tr')[1];
+                if (!row) {
+                    console.error("Row not found");
+                    return null;
+                }
+                console.log("Row found:", row);
+        
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 4) {
+                    console.error("Not enough cells found");
+                    return null;
+                }
+                console.log("Cells found:", cells);
+        
+                return {
+                    name: cells[0].textContent.trim(),
+                    dosid: cells[1].textContent.trim(),
+                    formationDate: cells[2].textContent.trim(),
+                    county: cells[3].textContent.trim()
+                };
+            });
+        
+            if (!entityDetails) {
+                throw new Error("Failed to retrieve entity details from the table.");
+            }
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
+        }
+        
+        
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+            return errorMessage !== null;  // Returns true if any error message is present
         });
 
-        // If the error message exists, throw an error
         if (nameInvalid) {
-            throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+            await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
+
+            const errorText = await page.evaluate(() => {
+                const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+                return errorMessage ? errorMessage.innerText : '';
+            });
+            throw new Error(`LLC name "${data.Payload.Name.CD_Legal_Name}" is invalid itv should end with LLC or Limited Liability Company or LL.C. . Error: ${errorText}`);
         }
 
+        console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
+
         console.log("Name added successfully!");
-        await fillNextPage(page, data)
+        await fillNextPage(page, data);
+
+        return { success: true, message: "Name added successfully" };
+
 
     } catch (e) {
         // Specific error handling
+        let errorResponse = {
+            success: false,
+            error: e.message
+        };
         if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
         } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        } else {
-            console.error("An error occurred:", e.message);
+            errorResponse.error = e.message;
+        } else if (e.message.startsWith('DuplicateEntityError:')) {
+            errorResponse.error = "Duplicate entity found: " + e.message;
+            try {
+                const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                errorResponse.entityDetails = entityDetails;
+            } catch (parseError) {
+                console.error("Failed to parse entity details:", parseError);
+            }
         }
 
+        console.error("An error occurred:", errorResponse.error);
+        return errorResponse;
         // Re-throw the error if necessary
-        throw e;
     }
 }
-
-
-
 
 async function addDataCorp(page, data) {
     try {
         console.log("Attempting to add the name");
 
         // Wait for the form to be available
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
+        await page.waitForSelector('form', { visible: true, timeout: 12000000 });
 
         // Fill out the form and submit
         await page.evaluate((data) => {
@@ -482,7 +711,7 @@ async function addDataCorp(page, data) {
             }
 
             // Set the name and checkbox values
-            nameField.value = data.Payload.Name.Legal_Name;
+            nameField.value = data.Payload.Name.CD_Legal_Name;
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
@@ -491,42 +720,185 @@ async function addDataCorp(page, data) {
             submitButton.click();
         }, data);
 
-        // Wait for either navigation or an error message to appear
         try {
             // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
 
         // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+        const isDuplicate =await page.evaluate(()=>{
+
+            const table=document.querySelector('table[id$="_orig"');
+            if(table){
+                const r=table.querySelectorAll('tbody tr'); 
+                return r.length > 0;
+              }
+
+            return false; 
+        }); 
+        if (isDuplicate) {
+            await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
+
+            const entityDetails = await page.evaluate(() => {
+                const table = document.querySelector('table[id$="_orig"]');
+                if (!table) {
+                    console.error("Table not found");
+                    return null;
+                }
+                console.log("Table found:", table);
+        
+                // Change: Select the second row (first data row) instead of the first row
+                const row = table.querySelectorAll('tbody tr')[1];
+                if (!row) {
+                    console.error("Row not found");
+                    return null;
+                }
+                console.log("Row found:", row);
+        
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 4) {
+                    console.error("Not enough cells found");
+                    return null;
+                }
+                console.log("Cells found:", cells);
+        
+                return {
+                    name: cells[0].textContent.trim(),
+                    dosid: cells[1].textContent.trim(),
+                    formationDate: cells[2].textContent.trim(),
+                    county: cells[3].textContent.trim()
+                };
+            });
+        
+            if (!entityDetails) {
+                throw new Error("Failed to retrieve entity details from the table.");
+            }
+            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
+        }
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+            return errorMessage !== null;  // Returns true if any error message is present
         });
 
-        // If the error message exists, throw an error
         if (nameInvalid) {
-            throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+            await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
+
+            const errorText = await page.evaluate(() => {
+                const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+                return errorMessage ? errorMessage.innerText : '';
+            });
+            throw new Error(`Corp Entity name "${data.Payload.Name.CD_Legal_Name}" is invalid it should end with Corporation or Corp. or Limited or Ltd. or  Incorporated or Inc.  Error: ${errorText}`);
         }
+
+        console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
 
         console.log("Name added successfully!");
         await fillNextPageCorp(page, data)
 
+        return { success: true, message: "Name added successfully" };
+
+
     } catch (e) {
         // Specific error handling
+        // Specific error handling
+        let errorResponse = {
+            success: false,
+            error: e.message
+        };
         if (e.message.includes('Execution context was destroyed')) {
-            console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
         } else if (e.message.includes('Name is Invalid')) {
-            console.error(e.message);
-        } else {
-            console.error("An error occurred:", e.message);
+            errorResponse.error = e.message;
+        } else if (e.message.startsWith('DuplicateEntityError:')) {
+            errorResponse.error = "Duplicate entity found: " + e.message;
+            try {
+                const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                errorResponse.entityDetails = entityDetails;
+            } catch (parseError) {
+                console.error("Failed to parse entity details:", parseError);
+            }
         }
 
-        // Re-throw the error if necessary
-        throw e;
+        console.error("An error occurred:", errorResponse.error);
+        return errorResponse;
+        
     }
 }
+
+
+
+
+// async function addDataCorp(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
+
+//         // Wait for the form to be available
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         // Fill out the form and submit
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
+
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+
+//             // Set the name and checkbox values
+//             nameField.value = data.Payload.Name.Legal_Name;
+//             if (checkbox) {
+//                 checkbox.checked = data.checked;
+//             }
+
+//             // Trigger form submission
+//             submitButton.click();
+//         }, data);
+
+//         // Wait for either navigation or an error message to appear
+//         try {
+//             // Wait for navigation after form submission
+//             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+//         } catch (err) {
+//             console.log("Page did not navigate, likely staying on the same page due to an error.");
+//         }
+
+//         // Check if the error message about the unacceptable name appears
+//         await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+//         const nameInvalid = await page.evaluate(() => {
+//             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+//             return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+//         });
+
+//         // If the error message exists, throw an error
+//         if (nameInvalid) {
+//             throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+//         }
+
+//         console.log("Name added successfully!");
+//         await fillNextPageCorp(page, data)
+
+//     } catch (e) {
+//         // Specific error handling
+//         if (e.message.includes('Execution context was destroyed')) {
+//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+//         } else if (e.message.includes('Name is Invalid')) {
+//             console.error(e.message);
+//         } else {
+//             console.error("An error occurred:", e.message);
+//         }
+
+//         // Re-throw the error if necessary
+//         throw e;
+//     }
+// }
 
 // async function addDataCorp(page, data) {
 //     try {
@@ -631,100 +1003,94 @@ async function fillNextPageCorp(page, data) {
 
             // document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
 
-            const entityDesignations = [
-                "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
-                "Ltd.", "Limited", "Incorporated", "Inc.", "Corp.", "Corporation",
-                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
-                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
-                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
-                "Mutual", "Association", "Pvt Ltd"
-            ];
+            
 
-            let legalName = data.Payload.Name.Legal_Name;
+            let legalName = data.Payload.Name.CD_Legal_Name;
+            document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
 
-            entityDesignations.forEach(term => {
-                const regex = new RegExp(`\\b${term}\\b`, 'i');
-                legalName = legalName.replace(regex, '').trim();
-            });
+            // entityDesignations.forEach(term => {
+            //     const regex = new RegExp(`\\b${term}\\b`, 'i');
+            //     legalName = legalName.replace(regex, '').trim();
+            // });
 
-            if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
-                document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
-            } else {
-                // Append " LLC" if there are no terms and no space
-                document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
-            }
-            // document.querySelector('#P3_COUNTY').value = "4";
+            // if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
+            // } else {
+            //     // Append " LLC" if there are no terms and no space
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
+            // }
+            // // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
 
 
 
-            // const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
-            // effectiveDate.scrollIntoView()
-            // const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
-            // Dissolution_Date.scrollIntoView()
-            // const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
-            // liability_statement.scrollIntoView()
+            const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
+            effectiveDate.scrollIntoView()
+            const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
+            Dissolution_Date.scrollIntoView()
+            const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
+            liability_statement.scrollIntoView()
 
-            // if (effectiveDate) {
-            //     effectiveDate.click();
-            //     const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
-            //     const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
+            if (effectiveDate) {
+                effectiveDate.click();
+                const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
+                const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (Dissolution_Date) {
-            //     Dissolution_Date.click();
-            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            if (Dissolution_Date) {
+                Dissolution_Date.click();
+                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (liability_statement) {
-            //     liability_statement.click();
-            // }
+            if (liability_statement) {
+                liability_statement.click();
+            }
 
             const opt1 = document.querySelector("input#P3_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P3_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
-                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -734,7 +1100,7 @@ async function fillNextPageCorp(page, data) {
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
-                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P3_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -744,15 +1110,15 @@ async function fillNextPageCorp(page, data) {
             const agentOpt1 = document.querySelector("input#P3_RA_ADDR_OPTION_0");
             const agentOpt2 = document.querySelector("input#P3_RA_ADDR_OPTION_1");
 
-            if (data.Payload.Registerd_Agent) {
+            if (data.Payload.Registered_Agent) {
                 const check=document.querySelector('#P3_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registerd_Agent.Name;
-                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registerd_Agent.Address.RA_Address_Line1;
-                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registerd_Agent.Address.RA_Address_Line2;
-                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registerd_Agent.Address.RA_City;
-                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registerd_Agent.Address.RA_Postal_Code;
+                document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
+                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
+                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
+                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
+                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P3_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -791,11 +1157,11 @@ async function fillNextPageCorp(page, data) {
 
             const stockInfo = data.Payload.Stock_Information;
             console.log("Stock information is :=" ,stockInfo)
-const shareValue = stockInfo.Share_Par_Value;
+const shareValue = stockInfo.SI_Share_Par_Value;
 
 const stockType = shareValue !== undefined && shareValue !== null ? 'PV' : 'NPV';
 
-document.querySelector('input[name="P3_NUM_SHARES"]').value = stockInfo.No_Of_Shares;
+document.querySelector('input[name="P3_NUM_SHARES"]').value = stockInfo.SI_No_Of_Shares;
 
 const stockTypeSelect = document.querySelector('#P3_STOCK_TYPE');
 stockTypeSelect.value = stockType;
@@ -814,7 +1180,7 @@ const clickedButton = 'ServiceCompany'; // Example: this value will come based o
 if (clickedButton === 'ServiceCompany') {
   // Populate fields for Service Company
   
-  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
+  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
@@ -824,7 +1190,7 @@ if (clickedButton === 'ServiceCompany') {
 } else if (clickedButton === 'SOP') {
   // Populate fields for SOP
   
-  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
+  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
@@ -833,7 +1199,7 @@ if (clickedButton === 'ServiceCompany') {
 } else if (clickedButton === 'Incorporator') {
   // Populate fields for Incorporator
   
-  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
+  document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
@@ -889,79 +1255,79 @@ async function fillNextPage(page, data) {
                 radioButtons[0].checked = true;
             }
             
-            let legalName = data.Payload.Name.Legal_Name;
+            let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
             // Set the value in the input field
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
             // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
             // document.querySelector('#P4_COUNTY').value = "4";
             const dropdown= document.querySelector('#P4_COUNTY')
-            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.County.toUpperCase());
+            const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
-            // const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
-            // effectiveDate.scrollIntoView()
-            // const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
-            // Dissolution_Date.scrollIntoView()
-            // const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
-            // liability_statement.scrollIntoView()
+            const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
+            effectiveDate.scrollIntoView()
+            const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
+            Dissolution_Date.scrollIntoView()
+            const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
+            liability_statement.scrollIntoView()
 
-            // if (effectiveDate) {
-            //     effectiveDate.click();
-            //     const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
+            if (data.Payload.effectiveDate) {
+                effectiveDate.click();
+                const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
+                const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (Dissolution_Date) {
-            //     Dissolution_Date.click();
-            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            if (Dissolution_Date) {
+                Dissolution_Date.click();
+                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (liability_statement) {
-            //     liability_statement.click();
-            // }
+            if (liability_statement) {
+                liability_statement.click();
+            }
 
             const opt1 = document.querySelector("input#P4_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P4_SOP_ADDR_OPTION_1");
 
             if (opt1 && opt1.checked) {
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -971,7 +1337,7 @@ async function fillNextPage(page, data) {
                 if (serviceCompanySelect) {
                     serviceCompanySelect.value = "440";
                 }
-                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.Alternate_Legal_Name;
+                document.querySelector('input[name="P4_SOP_NAME"]').value = data.Payload.Name.CD_Alternate_Legal_Name;
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
@@ -985,7 +1351,7 @@ async function fillNextPage(page, data) {
                 const check=document.querySelector('#P4_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.Name;
+                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
                 document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
                 document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
                 document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
@@ -998,13 +1364,13 @@ async function fillNextPage(page, data) {
             }
         }
 
-            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
             document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
             document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
-            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
 
-            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Og_Name;
+            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
             document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
             document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
@@ -1046,11 +1412,15 @@ function isNetworkError(error) {
     return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET','ERR_CONNECTION_RESET','ERR_CONNECTION_REFUSED'].includes(error.code);
 }
 
-async function retry(fn, retries = 3) {
+async function retry(fn, retries = 3,page) {
     for (let i = 0; i < retries; i++) {
         try {
             return await fn();
         } catch (error) {
+            if(isNetworkError(error)){
+                console.error(`Network error occured : ${error.message} ...Error reloading the script `)
+                await page.reload({waitUntil : 'networkidle0' })
+            }
             if (i === retries - 1) throw error;
         }
     }

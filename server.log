@@ -1436,3 +1436,29 @@ For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides
 [2024-08-29T13:11:38.660Z] Login page loaded.
 [2024-08-29T13:12:14.991Z] Data fetched from API successfully.
 [2024-08-29T13:12:38.242Z] Login page loaded.
+[2024-08-30T11:22:39.305Z] Data fetched from API successfully.
+[2024-08-30T11:22:51.697Z] Landing Page Loaded
+[2024-08-30T11:22:55.911Z] Login failed: Couldn't find login elements
+[2024-08-30T11:25:59.050Z] Data fetched from API successfully.
+[2024-08-30T11:26:07.692Z] Landing Page Loaded
+[2024-09-01T11:24:31.460Z] Data fetched from API successfully.
+[2024-09-01T11:27:03.926Z] Data fetched from API successfully.
+[2024-09-01T11:28:34.562Z] Data fetched from API successfully.
+[2024-09-01T11:28:47.219Z] Login page loaded.
+[2024-09-01T11:36:16.854Z] Data fetched from API successfully.
+[2024-09-01T11:36:28.016Z] Login page loaded.
+[2024-09-01T11:36:37.663Z] Data fetched from API successfully.
+[2024-09-01T11:36:49.093Z] Login page loaded.
+[2024-09-01T14:35:36.084Z] Data fetched from API successfully.
+[2024-09-01T14:36:18.791Z] Login page loaded.
+[2024-09-01T14:37:57.586Z] Data fetched from API successfully.
+[2024-09-01T14:38:12.621Z] Login page loaded.
+[2024-09-01T14:38:26.718Z] Data fetched from API successfully.
+[2024-09-01T14:38:34.637Z] Landing Page Loaded
+[2024-09-01T14:40:43.693Z] Next step completed and preview loaded.
+[2024-09-01T15:17:57.862Z] Data fetched from API successfully.
+[2024-09-01T15:18:04.401Z] Landing Page Loaded
+[2024-09-01T15:20:12.632Z] Next step completed and preview loaded.
+[2024-09-01T16:32:49.569Z] Data fetched from API successfully.
+[2024-09-01T16:33:05.303Z] Landing Page Loaded
+[2024-09-01T16:35:13.893Z] Next step completed and preview loaded.

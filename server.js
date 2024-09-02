@@ -19,7 +19,7 @@ const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if nee
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000','http://192.168.101.84'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -103,7 +103,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                     waitUntil: 'networkidle0',
                     timeout: 60000
-                });
+                },5,page);
                 log('Login page loaded.');
             } catch (error) {
                 console.error("Error navigating to the login page:", error.message);
@@ -236,7 +236,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 app.post('/run-puppeteer', async (req, res) => {
     shouldTriggerAutomation = true; 
 
-    const jsonData = fillNextPage;
+    const jsonData = req.body;
 
     if (!jsonData) {
         res.status(400).send('API endpoint and request payload are required.');
@@ -428,7 +428,7 @@ async function addDataLLC(page, data) {
 
         try {
             // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
@@ -543,7 +543,7 @@ async function addDataCorp(page, data) {
         console.log("Attempting to add the name");
 
         // Wait for the form to be available
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
+        await page.waitForSelector('form', { visible: true, timeout: 12000000 });
 
         // Fill out the form and submit
         await page.evaluate((data) => {
@@ -567,7 +567,7 @@ async function addDataCorp(page, data) {
 
         try {
             // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
