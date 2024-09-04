@@ -61,6 +61,15 @@ async function automateLLCFiling(options) {
       try {
         console.log("Filling out the new filing page...");
 
+        // Validate the LLC name
+        const llcName = options.llcName;
+        const validLLCName = /(?:LLC|Limited Liability Company|L\.L\.C\.)/i;
+
+        if (!validLLCName.test(llcName)) {
+          throw new Error('Invalid LLC Name: The name must include "LLC", "Limited Liability Company", or "L.L.C."');
+        }
+
+        // If the LLC name is valid, proceed with filling the form
         if (options.effectiveDate) {
           await page.type('#eff_date_mm', options.effectiveDate.month);
           await randomSleep(1000, 3000);
@@ -159,7 +168,7 @@ const filingOptions = {
   effectiveDate: { month: '01', day: '01', year: '2025' },
   certificateOfStatus: true,
   certifiedCopy: true,
-  llcName: 'My New LLC, LLC',
+  llcName: 'My New LLC ', // Must contain "LLC", "Limited Liability Company", or "L.L.C."
   principalPlace: {
     address: '123 Main St',
     suite: 'Suite 100',

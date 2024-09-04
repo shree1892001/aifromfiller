@@ -874,62 +874,62 @@ async function fillNextPageCorp(page, data) {
 
 
 
-            // const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
-            // effectiveDate.scrollIntoView()
-            // const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
-            // Dissolution_Date.scrollIntoView()
-            // const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
-            // liability_statement.scrollIntoView()
+            const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
+            effectiveDate.scrollIntoView()
+            const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
+            Dissolution_Date.scrollIntoView()
+            const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
+            liability_statement.scrollIntoView()
 
-            // if (effectiveDate) {
-            //     effectiveDate.click();
-            //     const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
-            //     const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
+            if (effectiveDate) {
+                effectiveDate.click();
+                const radio1 = document.querySelector("input#P3_EXISTENCE_TYPE_0");
+                const radio2 = document.querySelector("input#P3_EXISTENCE_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P3_EXIST_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P3_EXIST_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (Dissolution_Date) {
-            //     Dissolution_Date.click();
-            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            if (Dissolution_Date) {
+                Dissolution_Date.click();
+                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P3_DURATION_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P3_DURTION_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (liability_statement) {
-            //     liability_statement.click();
-            // }
+            if (liability_statement) {
+                liability_statement.click();
+            }
 
             const opt1 = document.querySelector("input#P3_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P3_SOP_ADDR_OPTION_1");
@@ -1111,62 +1111,62 @@ async function fillNextPage(page, data) {
             if(option){
                 dropdown.value=option.value ;
             }
-            // const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
-            // effectiveDate.scrollIntoView()
-            // const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
-            // Dissolution_Date.scrollIntoView()
-            // const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
-            // liability_statement.scrollIntoView()
+            const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
+            effectiveDate.scrollIntoView()
+            const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
+            Dissolution_Date.scrollIntoView()
+            const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
+            liability_statement.scrollIntoView()
 
-            // if (data.Payload.effectiveDate) {
-            //     effectiveDate.click();
-            //     const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
+            if (data.Payload.effectiveDate) {
+                effectiveDate.click();
+                const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
+                const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P4_EXIST_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (Dissolution_Date) {
-            //     Dissolution_Date.click();
-            //     const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-            //     const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+            if (Dissolution_Date) {
+                Dissolution_Date.click();
+                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
+                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
 
-            //     if (radio1 && radio1.checked) {
-            //         radio1.checked = true;
-            //     } else if (radio2 && radio2.checked) {
-            //         const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
-            //         if (effectiveDateInput) {
-            //             effectiveDateInput.value = data.effectiveDate;
+                if (radio1 && radio1.checked) {
+                    radio1.checked = true;
+                } else if (radio2 && radio2.checked) {
+                    const effectiveDateInput = document.querySelector('input[name="P4_DIS_CALENDAR"]');
+                    if (effectiveDateInput) {
+                        effectiveDateInput.value = data.effectiveDate;
 
-            //             effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-            //             const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
-            //             if (dateComponent) {
-            //                 const event = new Event('ojInputDateValueChanged', { bubbles: true });
-            //                 dateComponent.dispatchEvent(event);
-            //             }
-            //         }
-            //     }
-            // }
+                        const dateComponent = document.querySelector('#P4_DIS_CALENDAR');
+                        if (dateComponent) {
+                            const event = new Event('ojInputDateValueChanged', { bubbles: true });
+                            dateComponent.dispatchEvent(event);
+                        }
+                    }
+                }
+            }
 
-            // if (liability_statement) {
-            //     liability_statement.click();
-            // }
+            if (liability_statement) {
+                liability_statement.click();
+            }
 
             const opt1 = document.querySelector("input#P4_SOP_ADDR_OPTION_0");
             const opt2 = document.querySelector("input#P4_SOP_ADDR_OPTION_1");

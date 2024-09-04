@@ -87,10 +87,15 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         }
 
         async function handleFL(page, data) {
+            if(data.orderShortName=='LLC'){
+
             await retry(async () => {
+
               try {
                 console.log("Navigating to the Landing page...");
-                await page.goto("https://efile.sunbiz.org/llc_file.html", {
+
+
+                await page.goto(jsonData.State.stateUrl, {
                   waitUntil: 'networkidle0',
                   timeout: 60000
                 });
@@ -178,10 +183,31 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               await page.click('#cert_num_flag');
               await randomSleep(1000, 3000);
             }
+            try{ 
+
+                let legalName =data.llcName; 
+                if(legalName.includes("LLC") || legalName.includes("L.L.C.") || legalName.includes("Limited Liability Company")){
           
-            await page.type('#corp_name', data.llcName);
-            await randomSleep(1000, 3000);
-          
+                await page.type('#corp_name', data.llcName);
+                await randomSleep(1000, 3000);
+                return { success: true, message: "Name added successfully" };
+                }else{
+
+                    throw new Error("Name of the entity is invalid it should end with either LLC/L.L.C. / Limited Liability Company")
+                }
+            
+            }catch(e){
+
+                let errorResponse = {
+                    success: false,
+                    error: e.message
+                };
+                if(e.message.includes("Name of entity is invalid")){
+                    errorResponse.error=e.message; 
+                }
+            
+            
+            }  
             await page.type('#princ_addr1', data.principalPlace.address);
             await randomSleep(1000, 3000);
             await page.type('#princ_addr2', data.principalPlace.suite);
@@ -222,37 +248,546 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               await randomSleep(1000, 3000);
               await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
               await randomSleep(1000, 3000);
+              await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+              await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+              await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+              await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
 
             }
             else if(data.Registered_Agent.Name.Corp_Name){
-                  await page.type('input#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
-                  await page.type('input#ra_addr1',data.Registered_Agent.Name.Corp_Name)
-                  await page.type('input#ra_addr2',data.Registered_Agent.Name.Corp_Name)
                   await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
-                  await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                  await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                  await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                  await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+
 
 
 
             }
+            await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
+
           
             if (data.purpose) {
               await page.type('#purpose', data.purpose);
               await randomSleep(1000, 3000);
             }
-          
-            await page.evaluate(() => {
-              document.querySelector('form[name="filingform"]').submit();
+            if(data.Correspondance.Name){
+
+                await page.type('#ret_name',data.Correspondance.Name);
+                await page.type('#ret_email_addr',data.Correspondance.Email);
+                await page.type('#email_addr_verify',data.Correspondance.Email);
+            }
+            await page.type('#signature',data.Correspondance.Name);
+            if(data.Manager.Name.FirstName){
+            await page.type('#off1_name_title', data.Manager.Name.Title1);
+            await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
+            await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
+          await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
+           await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
+
+           await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+           await page.type('#off1_name_city', data.Manager.Address.City1);
+           await page.type('#off1_name_st', data.Manager.Address.State1);
+           await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+           await page.type('#off1_name_cntry', data.Manager.Address.Country1)
+
+           //second manager
+           await page.type('#off2_name_title', data.Manager.Name.Title2);
+           await page.type('#off2_name_last_name', data.Manager.Name.LastName2);
+           await page.type('#off2_name_first_name', data.Manager.Name.FirstName2);
+         await page.type('#off2_name_m_name', data.Manager.Name.MidInitial2);
+          await page.type('#off2_name_title_name', data.Manager.Name.Name_Title2);
+
+
+          await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+          await page.type('#off2_name_city', data.Manager.Address.City2);
+          await page.type('#off2_name_st', data.Manager.Address.State2);
+          await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+          await page.type('#off2_name_cntry', data.Manager.Address.Country2)
+          //third manager
+          await page.type('#off3_name_title', data.Manager.Name.Title3);
+          await page.type('#off3_name_last_name', data.Manager.Name.LastName33);
+          await page.type('#off3_name_first_name', data.Manager.Name.FirstName3);
+        await page.type('#off3_name_m_name', data.Manager.Name.MidInitial3);
+         await page.type('#off3_name_title_name', data.Manager.Name.Name_Title3);
+         await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+         await page.type('#off3_name_city', data.Manager.Address.City3);
+         await page.type('#off3_name_st', data.Manager.Address.State3);
+         await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+         await page.type('#off3_name_cntry', data.Manager.Address.Country3)
+         //fourth
+         await page.type('#off4_name_title', data.Manager.Name.Title4);
+         await page.type('#off4_name_last_name', data.Manager.Name.LastName4);
+         await page.type('#off4_name_first_name', data.Manager.Name.FirstName4);
+       await page.type('#off4_name_m_name', data.Manager.Name.MidInitial4);
+        await page.type('#off4_name_title_name', data.Manager.Name.Name_Title4);
+
+        await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+        await page.type('#off4_name_city', data.Manager.Address.City4);
+        await page.type('#off4_name_st', data.Manager.Address.State4);
+        await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+        await page.type('#off4_name_cntry', data.Manager.Address.Country4)
+        //fifth
+        await page.type('#off5_name_title', data.Manager.Name.Title5);
+        await page.type('#off5_name_last_name', data.Manager.Name.LastName5);
+        await page.type('#off5_name_first_name', data.Manager.Name.FirstName5);
+      await page.type('#off5_name_m_name', data.Manager.Name.MidInitial5);
+       await page.type('#off5_name_title_name', data.Manager.Name.Name_Title5);
+
+       await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+       await page.type('#off5_name_city', data.Manager.Address.City5);
+       await page.type('#off5_name_st', data.Manager.Address.State5);
+       await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+       await page.type('#off5_name_cntry', data.Manager.Address.Country5)
+
+       await page.type('#off6_name_title', data.Manager.Name.Title6);
+       await page.type('#off6_name_last_name', data.Manager.Name.LastName6);
+       await page.type('#off6_name_first_name', data.Manager.Name.FirstName6);
+     await page.type('#off6_name_m_name', data.Manager.Name.MidInitial6);
+      await page.type('#off6_name_title_name', data.Manager.Name.Name_Title6);
+
+
+      await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+      await page.type('#off6_name_city', data.Manager.Address.City6);
+      await page.type('#off6_name_st', data.Manager.Address.State6);
+      await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+      await page.type('#off6_name_cntry', data.Manager.Address.Country6)
+            }
+            else if(data.Manager.Name.entityName){
+
+                if (data.Manager.Name.entityName.length > 42) {
+                    throw new Error('Entity Name exceeds 42 characters.');
+                  }
+                  if (data.Manager.Address.streetAddress.length  > 42) {
+                    throw new Error('Street Address exceeds 42 characters.');
+                  }
+                  if (data.Manager.Address.City.length > 28) {
+                    throw new Error('City exceeds 28 characters.');
+                  }
+                  if (data.Manager.Address.State.length > 2) {
+                    throw new Error('State exceeds 2 characters.');
+                  }
+                  if (data.Manager.Address.postal_code.length > 9) {
+                    throw new Error('Zip Code exceeds 9 characters.');
+                  }
+                  if (data.Manager.Address.Country.length > 2) {
+                    throw new Error('Country exceeds 2 characters.');
+                  }
+                
+                  // Fill in the form fields
+                  await page.type('#off1_name_corp_name', data.Manager.Name.entityName1);
+                  await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+                  await page.type('#off1_name_city', data.Manager.Address.City1);
+                  await page.type('#off1_name_st', data.Manager.Address.State1);
+                  await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+                  await page.type('#off1_name_cntry', data.Manager.Address.Country1);
+
+                  await page.type('#off2_name_corp_name', data.Manager.Name.entityName2);
+                  await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+                  await page.type('#off2_name_city', data.Manager.Address.City2);
+                  await page.type('#off2_name_st', data.Manager.Address.State2);
+                  await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+                  await page.type('#off2_name_cntry', data.Manager.Address.Country2);
+
+                  await page.type('#off3_name_corp_name', data.Manager.Name.entityName3);
+                  await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+                  await page.type('#off3_name_city', data.Manager.Address.City3);
+                  await page.type('#off3_name_st', data.Manager.Address.State3);
+                  await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+                  await page.type('#off3_name_cntry', data.Manager.Address.Country3);
+
+                  await page.type('#off4_name_corp_name', data.Manager.Name.entityName4);
+                  await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+                  await page.type('#off4_name_city', data.Manager.Address.City4);
+                  await page.type('#off4_name_st', data.Manager.Address.State4);
+                  await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+                  await page.type('#off4_name_cntry', data.Manager.Address.Country4);
+
+                  await page.type('#off5_name_corp_name', data.Manager.Name.entityName5);
+                  await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+                  await page.type('#off5_name_city', data.Manager.Address.City5);
+                  await page.type('#off5_name_st', data.Manager.Address.State5);
+                  await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+                  await page.type('#off5_name_cntry', data.Manager.Address.Country5);
+
+                  await page.type('#off6_name_corp_name', data.Manager.Name.entityName6);
+                  await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+                  await page.type('#off6_name_city', data.Manager.Address.City6);
+                  await page.type('#off6_name_st', data.Manager.Address.State6);
+                  await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+                  await page.type('#off6_name_cntry', data.Manager.Address.Country6);
+                
+            }
+            await page.waitForSelector('input[name="submit"]', { visible: true, timeout: 60000 });
+        
+
+        
+          await page.evaluate(() => {
+              document.querySelector('input[name="submit"]').submit();
             });
           
             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
             console.log('Form submitted successfully');
+
+            return { success: true, message: "Name added successfully" };
+        }
+
+        
+        else if(data.orderShortName=="CORP"){
+            await retry(async () => {
+
+                try {
+                  console.log("Navigating to the Landing page...");
+  
+  
+                  await page.goto(jsonData.State.stateUrl, {
+                    waitUntil: 'networkidle0',
+                    timeout: 60000
+                  });
+                  console.log('Landing Page Loaded');
+                } catch (error) {
+                  console.error("Error navigating to the Landing page:", error.message);
+                  throw new Error("Navigation to the Landing page failed.");
+                }
+              }, 5, page);
+            
+              await randomSleep(3000, 5000);
+              await performEventsonLandingPage(page);
+            
+              await adjustViewport(page);
+            
+              console.log("Waiting for the list to appear...");
+            
+              async function performEventsonLandingPage(page) {
+                try {
+                  console.log("Attempting to interact with the landing page...");
+            
+                  await page.waitForSelector('form', { visible: true, timeout: 120000 });
+                  console.log("Form found.");
+            
+                  const checkboxExists = await page.evaluate(() => {
+                    const checkbox = document.querySelector('input[name="Disclaimer"]');
+                    console.log("Checkbox found:", !!checkbox);
+                    return !!checkbox;
+                  });
+            
+                  if (!checkboxExists) {
+                    throw new Error("Checkbox not found.");
+                  }
+            
+                  await page.click('input[name="Disclaimer"]');
+                  console.log("Disclaimer checkbox checked.");
+            
+                  const submitButtonExists = await page.evaluate(() => {
+                    const submitButton = document.querySelector('input[name="submit"]');
+                    console.log("Submit button found:", !!submitButton);
+                    return !!submitButton;
+                  });
+            
+                  if (!submitButtonExists) {
+                    throw new Error("Submit button not found.");
+                  }
+            
+                  await page.click('input[name="submit"]');
+                  console.log("Submit button clicked.");
+            
+                  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+                  console.log('Form submission successful.');
+            
+                } catch (e) {
+                  console.error("Form submission failed:", e.message);
+                  return { status: 'error', message: e.message };
+                }
+              }
+            
+              await adjustViewport(page);
+            
+              console.log("Next step completed and preview loaded.");
+              await randomSleep(18000, 22000);
+            
+              await page.evaluate(() => {
+                document.querySelector('input[name="filing_type"]').value = 'LLC';
+                document.querySelector('input[name="track_number"]').value = '100435715291';
+                document.querySelector('input[name="menu_function"]').value = 'ADD';
+              });
+            
+              if (data.effectiveDate) {
+                await page.type('#eff_date_mm', data.effectiveDate.month);
+                await randomSleep(1000, 3000);
+                await page.type('#eff_date_dd', data.effectiveDate.day);
+                await randomSleep(1000, 3000);
+                await page.type('#eff_date_yyyy', data.effectiveDate.year);
+                await randomSleep(1000, 3000);
+              }
+            
+              if (data.certificateOfStatus) {
+                await page.click('#cos_num_flag');
+                await randomSleep(1000, 3000);
+              }
+              if (data.certifiedCopy) {
+                await page.click('#cert_num_flag');
+                await randomSleep(1000, 3000);
+              }
+              try{
+              let legalName=data.llcName; 
+
+
+              if(legalName.includes("Corp") || legalName.includes("Inc.") || legalName.includes("Incorporated")){
+
+            
+              await page.type('#corp_name', legalName);
+
+              }else {
+
+                throw new Error("Name of the comapny is invalid it should end with Corp / Inc. / Incorporated")
+              }
+              await randomSleep(1000, 3000);
+              return { success: true, message: "Name added successfully" };
+
+            }catch(e){
+                let errorResponse = {
+                    success: false,
+                    error: e.message
+                };
+                if(e.message.includes("Name of entity is invalid")){
+                    errorResponse.error=e.message; 
+                }
+
+            }
+              
+            
+              await page.type('#princ_addr1', data.principalPlace.address);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_addr2', data.principalPlace.suite);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_city', data.principalPlace.city);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_st', data.principalPlace.state);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_zip', data.principalPlace.zip);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_cntry', data.principalPlace.country);
+              await randomSleep(1000, 3000);
+            
+              if (data.mailingAddressSameAsPrincipal) {
+                await page.click('#same_addr_flag');
+                await randomSleep(1000, 3000);
+              } else {
+                await page.type('#mail_addr1', data.mailingAddress.address);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_addr2', data.mailingAddress.suite);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_city', data.mailingAddress.city);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_st', data.mailingAddress.state);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_zip', data.mailingAddress.zip);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_cntry', data.mailingAddress.country);
+                await randomSleep(1000, 3000);
+              }
+            
+              if (data.Registered_Agent.Name.lastName) {
+                await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+  
+              }
+              else if(data.Registered_Agent.Name.Corp_Name){
+                    await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                    await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                    await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                    await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                    await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+  
+  
+  
+  
+              }
+              await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
+  
+            
+              if (data.purpose) {
+                await page.type('#purpose', data.purpose);
+                await randomSleep(1000, 3000);
+              }
+              if(data.Correspondance.Name){
+  
+                  await page.type('#ret_name',data.Correspondance.Name);
+                  await page.type('#ret_email_addr',data.Correspondance.Email);
+                  await page.type('#email_addr_verify',data.Correspondance.Email);
+              }
+              await page.type('#signature',data.Correspondance.Name);
+              if(data.Manager.Name.FirstName){
+              await page.type('#off1_name_title', data.Manager.Name.Title1);
+              await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
+              await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
+            await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
+             await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
+  
+             await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+             await page.type('#off1_name_city', data.Manager.Address.City1);
+             await page.type('#off1_name_st', data.Manager.Address.State1);
+             await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+             await page.type('#off1_name_cntry', data.Manager.Address.Country1)
+  
+             //second manager
+             await page.type('#off2_name_title', data.Manager.Name.Title2);
+             await page.type('#off2_name_last_name', data.Manager.Name.LastName2);
+             await page.type('#off2_name_first_name', data.Manager.Name.FirstName2);
+           await page.type('#off2_name_m_name', data.Manager.Name.MidInitial2);
+            await page.type('#off2_name_title_name', data.Manager.Name.Name_Title2);
+  
+  
+            await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+            await page.type('#off2_name_city', data.Manager.Address.City2);
+            await page.type('#off2_name_st', data.Manager.Address.State2);
+            await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+            await page.type('#off2_name_cntry', data.Manager.Address.Country2)
+            //third manager
+            await page.type('#off3_name_title', data.Manager.Name.Title3);
+            await page.type('#off3_name_last_name', data.Manager.Name.LastName33);
+            await page.type('#off3_name_first_name', data.Manager.Name.FirstName3);
+          await page.type('#off3_name_m_name', data.Manager.Name.MidInitial3);
+           await page.type('#off3_name_title_name', data.Manager.Name.Name_Title3);
+           await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+           await page.type('#off3_name_city', data.Manager.Address.City3);
+           await page.type('#off3_name_st', data.Manager.Address.State3);
+           await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+           await page.type('#off3_name_cntry', data.Manager.Address.Country3)
+           //fourth
+           await page.type('#off4_name_title', data.Manager.Name.Title4);
+           await page.type('#off4_name_last_name', data.Manager.Name.LastName4);
+           await page.type('#off4_name_first_name', data.Manager.Name.FirstName4);
+         await page.type('#off4_name_m_name', data.Manager.Name.MidInitial4);
+          await page.type('#off4_name_title_name', data.Manager.Name.Name_Title4);
+  
+          await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+          await page.type('#off4_name_city', data.Manager.Address.City4);
+          await page.type('#off4_name_st', data.Manager.Address.State4);
+          await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+          await page.type('#off4_name_cntry', data.Manager.Address.Country4)
+          //fifth
+          await page.type('#off5_name_title', data.Manager.Name.Title5);
+          await page.type('#off5_name_last_name', data.Manager.Name.LastName5);
+          await page.type('#off5_name_first_name', data.Manager.Name.FirstName5);
+        await page.type('#off5_name_m_name', data.Manager.Name.MidInitial5);
+         await page.type('#off5_name_title_name', data.Manager.Name.Name_Title5);
+  
+         await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+         await page.type('#off5_name_city', data.Manager.Address.City5);
+         await page.type('#off5_name_st', data.Manager.Address.State5);
+         await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+         await page.type('#off5_name_cntry', data.Manager.Address.Country5)
+  
+         await page.type('#off6_name_title', data.Manager.Name.Title6);
+         await page.type('#off6_name_last_name', data.Manager.Name.LastName6);
+         await page.type('#off6_name_first_name', data.Manager.Name.FirstName6);
+       await page.type('#off6_name_m_name', data.Manager.Name.MidInitial6);
+        await page.type('#off6_name_title_name', data.Manager.Name.Name_Title6);
+  
+  
+        await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+        await page.type('#off6_name_city', data.Manager.Address.City6);
+        await page.type('#off6_name_st', data.Manager.Address.State6);
+        await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+        await page.type('#off6_name_cntry', data.Manager.Address.Country6)
+              }
+              else if(data.Manager.Name.entityName){
+  
+                  if (data.Manager.Name.entityName.length > 42) {
+                      throw new Error('Entity Name exceeds 42 characters.');
+                    }
+                    if (data.Manager.Address.streetAddress.length  > 42) {
+                      throw new Error('Street Address exceeds 42 characters.');
+                    }
+                    if (data.Manager.Address.City.length > 28) {
+                      throw new Error('City exceeds 28 characters.');
+                    }
+                    if (data.Manager.Address.State.length > 2) {
+                      throw new Error('State exceeds 2 characters.');
+                    }
+                    if (data.Manager.Address.postal_code.length > 9) {
+                      throw new Error('Zip Code exceeds 9 characters.');
+                    }
+                    if (data.Manager.Address.Country.length > 2) {
+                      throw new Error('Country exceeds 2 characters.');
+                    }
+                  
+                    // Fill in the form fields
+                    await page.type('#off1_name_corp_name', data.Manager.Name.entityName1);
+                    await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+                    await page.type('#off1_name_city', data.Manager.Address.City1);
+                    await page.type('#off1_name_st', data.Manager.Address.State1);
+                    await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+                    await page.type('#off1_name_cntry', data.Manager.Address.Country1);
+  
+                    await page.type('#off2_name_corp_name', data.Manager.Name.entityName2);
+                    await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+                    await page.type('#off2_name_city', data.Manager.Address.City2);
+                    await page.type('#off2_name_st', data.Manager.Address.State2);
+                    await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+                    await page.type('#off2_name_cntry', data.Manager.Address.Country2);
+  
+                    await page.type('#off3_name_corp_name', data.Manager.Name.entityName3);
+                    await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+                    await page.type('#off3_name_city', data.Manager.Address.City3);
+                    await page.type('#off3_name_st', data.Manager.Address.State3);
+                    await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+                    await page.type('#off3_name_cntry', data.Manager.Address.Country3);
+  
+                    await page.type('#off4_name_corp_name', data.Manager.Name.entityName4);
+                    await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+                    await page.type('#off4_name_city', data.Manager.Address.City4);
+                    await page.type('#off4_name_st', data.Manager.Address.State4);
+                    await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+                    await page.type('#off4_name_cntry', data.Manager.Address.Country4);
+  
+                    await page.type('#off5_name_corp_name', data.Manager.Name.entityName5);
+                    await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+                    await page.type('#off5_name_city', data.Manager.Address.City5);
+                    await page.type('#off5_name_st', data.Manager.Address.State5);
+                    await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+                    await page.type('#off5_name_cntry', data.Manager.Address.Country5);
+  
+                    await page.type('#off6_name_corp_name', data.Manager.Name.entityName6);
+                    await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+                    await page.type('#off6_name_city', data.Manager.Address.City6);
+                    await page.type('#off6_name_st', data.Manager.Address.State6);
+                    await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+                    await page.type('#off6_name_cntry', data.Manager.Address.Country6);
+                  
+              }
+              await page.waitForSelector('input[name="submit"]', { visible: true, timeout: 60000 });
+   
+            await page.evaluate(() => {
+                document.querySelector('input[name="submit"]').submit();
+              });
+            
+              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+              console.log('Form submitted successfully');
+  
+           return errorResponse;
+        }
           }
         async function handleNy(page,jsonData){
         await retry(async () => {
             try {
                 // sendWebSocketMessage('Navigating to the login page...');
                 console.log("Navigating to the login page...");
-                const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+                // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+                const response = await page.goto(jsonData.State.stateUrl, {
+
                     waitUntil: 'networkidle0',
                     timeout: 60000
                 });
@@ -484,74 +1019,7 @@ async function performLogin(page, jsonData) {
 }
 
 
-// async function fillForm(page, data) {
-//     try {
-//         console.log("Filling out the form");
 
-//         // Wait for the form to be visible
-//         await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
-//         await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
-
-//         // Fill out the form fields
-//         await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
-
-//         console.log('Form filled out.');
-//     } catch (err) {
-//         console.error("Error during form filling:", err.message);
-//         throw err;
-//     }
-// }
-
-// async function submitForm(page) {
-//     try {
-//         console.log("Submitting the form");
-
-//         // Trigger the onclick event of the submit button using the id
-//         await page.evaluate(() => {
-//             const submitButton = document.getElementById('B78886587564901765');
-//             if (submitButton) {
-//                 submitButton.click(); // Trigger the button's click event
-//             } else {
-//                 throw new Error('Submit button not found');
-//             }
-//         });
-
-//         console.log('Submit button clicked via onclick event.');
-
-//         // Wait for navigation after form submission
-//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
-
-//         console.log('Navigation after submission complete.');
-//     } catch (err) {
-//         console.error("Error during form submission or navigation:", err.message);
-//         throw err;
-//     }
-// }
-
-
-// async function addDataLLC(page, data) {
-//     try {
-//         // Fill out the form
-//         await fillForm(page, data);
-
-//         // Submit the form and handle navigation
-//         await submitForm(page);
-
-//         // Proceed to the next page or action
-//         await fillNextPage(page, data);
-
-//     } catch (e) {
-//         // Specific handling for errors
-//         if (e.message.includes('Execution context was destroyed')) {
-//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-//         } else {
-//             console.error("Adding name failed:", e.message);
-//         }
-
-//         // Return a specific error message as required
-//         throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
-//     }
-// }
 
 
 async function addDataLLC(page, data) {
@@ -654,7 +1122,7 @@ async function addDataLLC(page, data) {
                 const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
                 return errorMessage ? errorMessage.innerText : '';
             });
-            throw new Error(`LLC name "${data.Payload.Name.CD_Legal_Name}" is invalid itv should end with LLC or Limited Liability Company or LL.C. . Error: ${errorText}`);
+            throw new Error(`LLC name "${data.Payload.Name.CD_Legal_Name}" is invalid it should end with LLC or Limited Liability Company or LL.C. . Error: ${errorText}`);
         }
 
         console.log("Entity name is valid.");
@@ -805,8 +1273,7 @@ async function addDataCorp(page, data) {
 
 
     } catch (e) {
-        // Specific error handling
-        // Specific error handling
+        
         let errorResponse = {
             success: false,
             error: e.message
@@ -834,163 +1301,7 @@ async function addDataCorp(page, data) {
 
 
 
-// async function addDataCorp(page, data) {
-//     try {
-//         console.log("Attempting to add the name");
 
-//         // Wait for the form to be available
-//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-//         // Fill out the form and submit
-//         await page.evaluate((data) => {
-//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-//             const submitButton = document.querySelector('button.t-Button--hot');
-
-//             if (!nameField || !submitButton) {
-//                 throw new Error("Couldn't find name field or submit button");
-//             }
-
-//             // Set the name and checkbox values
-//             nameField.value = data.Payload.Name.Legal_Name;
-//             if (checkbox) {
-//                 checkbox.checked = data.checked;
-//             }
-
-//             // Trigger form submission
-//             submitButton.click();
-//         }, data);
-
-//         // Wait for either navigation or an error message to appear
-//         try {
-//             // Wait for navigation after form submission
-//             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
-//         } catch (err) {
-//             console.log("Page did not navigate, likely staying on the same page due to an error.");
-//         }
-
-//         // Check if the error message about the unacceptable name appears
-//         await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
-
-//         const nameInvalid = await page.evaluate(() => {
-//             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-//             return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
-//         });
-
-//         // If the error message exists, throw an error
-//         if (nameInvalid) {
-//             throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
-//         }
-
-//         console.log("Name added successfully!");
-//         await fillNextPageCorp(page, data)
-
-//     } catch (e) {
-//         // Specific error handling
-//         if (e.message.includes('Execution context was destroyed')) {
-//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
-//         } else if (e.message.includes('Name is Invalid')) {
-//             console.error(e.message);
-//         } else {
-//             console.error("An error occurred:", e.message);
-//         }
-
-//         // Re-throw the error if necessary
-//         throw e;
-//     }
-// }
-
-// async function addDataCorp(page, data) {
-//     try {
-//         console.log("Attempting to add the name");
-//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-//         await page.evaluate((data) => {
-//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-//             const submitButton = document.querySelector('button.t-Button--hot');
-
-
-//             if (!nameField || !submitButton) {
-//                 throw new Error("Couldn't find name field or submit button");
-//             }
-//             // //Corporation, Corp., Limited, Ltd., Incorporated, Inc.
-//             // if(data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc") ){
-//             //     nameField.value = data.Payload.Name.Legal_Name;
-
-//             // }
-//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc")) && data.Payload.Name.Legal_Name.includes(" "))){
-//             //     const error = new Error("Company name does not contain any allowed terms such as 'Corporation, Corp., Limited, Ltd., Incorporated, Inc.'");
-//             //     error.statusCode = 400 ; 
-//             //     throw error;
-//             // } 
-//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc"))) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
-//             //     nameField.value = data.Payload.Name.Legal_Name;
-//             //     nameField.value=nameField.value+" Corp."
-//             //     // const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
-//             //     // error.statusCode = 400 ; 
-//             //     // throw error;
-
-
-//             // } 
-//             const entityDesignations = [
-//                 "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
-//                "LLC","Limited Liability Company","L.L.C.",
-//                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
-//                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
-//                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
-//                "Mutual", "Association","Pvt Ltd"
-//            ];
-           
-//            try {
-//                let legalName = data.Payload.Name.Legal_Name;
-           
-//                entityDesignations.forEach(term => {
-//                    const regex = new RegExp(`\\b${term}\\b`, 'i');
-//                    legalName = legalName.replace(regex, '').trim();
-//                });
-           
-//                if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
-//                    nameField.value = legalName;
-//                } else {
-//                    nameField.value = `${legalName} Corp.`;
-//                }
-
-
-//             if (checkbox) {
-//                 checkbox.checked = data.checked;
-//             }
-//             submitButton.click();
-//         }  catch (e) {
-//             return { status: 'error', message: e.message };
-//         }
-
-
-//         }, data);
-
-    
-
-
-//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-//         log('Name added and continue button clicked.');
-
-//         await fillNextPageCorp(page, data);
-//     } catch (e) {
-//         await page.evaluate((message) => {
-//             const errorDiv = document.createElement('div');
-//             errorDiv.textContent = `Adding name failed: ${message}`;
-//             errorDiv.style.position = 'fixed';
-//             errorDiv.style.top = '0';
-//             errorDiv.style.left = '0';
-//             errorDiv.style.backgroundColor = 'red';
-//             errorDiv.style.color = 'white';
-//             errorDiv.style.padding = '10px';
-//             errorDiv.style.zIndex = '1000';
-//             document.body.appendChild(errorDiv);
-//         }, e.message);
-//         console.error("Adding name failed:", e);
-//     }
-// }
 
 async function fillNextPageCorp(page, data) {
     try {
@@ -1008,18 +1319,6 @@ async function fillNextPageCorp(page, data) {
             let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
 
-            // entityDesignations.forEach(term => {
-            //     const regex = new RegExp(`\\b${term}\\b`, 'i');
-            //     legalName = legalName.replace(regex, '').trim();
-            // });
-
-            // if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
-            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
-            // } else {
-            //     // Append " LLC" if there are no terms and no space
-            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
-            // }
-            // // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
             const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
@@ -1257,10 +1556,7 @@ async function fillNextPage(page, data) {
             
             let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
-            // Set the value in the input field
-            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
-            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
-            // document.querySelector('#P4_COUNTY').value = "4";
+            
             const dropdown= document.querySelector('#P4_COUNTY')
             const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
@@ -1378,6 +1674,8 @@ async function fillNextPage(page, data) {
         }, data);
 
         console.log("Next page filled.");
+        await randomSleep(10000, 220000);
+
 
     } catch (e) {
         await page.evaluate((message) => {
