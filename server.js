@@ -9,11 +9,13 @@ const cors = require('cors');
 
 const path = require('path');
 
+
+
 puppeteer.use(StealthPlugin());
 
 const app = express();
 const port = 3001;
-const apiEndpoint = 'http://localhost:3001/run-puppeteer'; 
+const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if needed
 
 app.use(bodyParser.json());
 app.use(cors({
@@ -22,8 +24,11 @@ app.use(cors({
 }));
 let shouldTriggerAutomation = false;
 
+
+// Set up logging
 const logFilePath = path.join(__dirname, 'server.log');
 const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
 
 const log = (message) => {
     const timestamp = new Date().toISOString();
@@ -50,10 +55,13 @@ function sendWebSocketMessage(message) {
 }
 let clients = [];
 
+
+
+
 app.use(bodyParser.json());
 function cleanData(data) {
     return JSON.parse(JSON.stringify(data, (key, value) => {
-
+        // Remove properties with undefined values
         return value === undefined ? null : value;
     }));
 }
@@ -201,7 +209,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         }
         console.log("Waiting for the preview page to be loaded...");
         try {
-            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 100000 });
+            await page.waitForSelector('.page-6.app-EFILING', { visible: true, timeout: 10000 });
         } catch (error) {
             console.error("Error waiting for the preview page:", error.message);
             throw new Error("Entity is in invalid format it should be contain LLC/ Limited Liability Company / LL.C. for the LLC and ");
@@ -214,7 +222,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
     } catch (e) {
         console.error("Error running Puppeteer:", e);
-
+    
+        // Pass a more specific error message to your API response
         return { status: 'error', message: e.message || "An unexpected error occurred" };
 
     } finally {
@@ -242,10 +251,12 @@ app.post('/run-puppeteer', async (req, res) => {
     }
 });
 
+
 async function setupPage(page) {
     await page.setJavaScriptEnabled(true);
     await page.setDefaultNavigationTimeout(120000);
     await adjustViewport(page);
+
 
     await page.evaluate(() => {
         Object.defineProperty(navigator, 'platform', { get: () => ['Win32', 'MacIntel', 'Linux x86_64'][Math.floor(Math.random() * 3)] });
@@ -262,25 +273,29 @@ async function performLogin(page, jsonData) {
     try {
         console.log("Attempting to login...");
 
+        // Wait for the form to be visible
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
+        // Fill in the login form and handle the submit
         await page.evaluate((jsonData) => {
             const usernameField = document.querySelector('input[name="P101_USERNAME"]');
             const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-            const submitButton = document.querySelector('button#P101_LOGIN'); 
+            const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
 
             if (!usernameField || !passwordField || !submitButton) {
                 throw new Error("Couldn't find login elements");
             }
 
+            // Set the username and password
             usernameField.value = jsonData.State.filingWebsiteUsername;
             passwordField.value = jsonData.State.filingWebsitePassword;
 
+            // Check if `apex` object is available
             if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
-
+                // Use apex.submit if available
                 apex.submit({ request: 'LOGIN', validate: true });
             } else if (submitButton) {
-
+                // Fallback to clicking the button if `apex.submit` is not available
                 submitButton.click();
             } else {
                 throw new Error("Submit method or button not found");
@@ -288,11 +303,13 @@ async function performLogin(page, jsonData) {
 
         }, jsonData);
 
+        // Wait for navigation or some indication that login succeeded
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
+        // Check for error messages after navigation
         const alertSelector = '#t_Alert_Notification';
         const errorMessage = 'Invalid Login Credentials';
-
+        
         const alertVisible = await page.evaluate((alertSelector) => {
             const alert = document.querySelector(alertSelector);
             return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
@@ -307,16 +324,89 @@ async function performLogin(page, jsonData) {
 
     } catch (error) {
         console.error("Login failed:", error.message);
-        throw error; 
+        throw error; // Re-throw the error for higher-level handling
     }
 }
+
+
+// async function fillForm(page, data) {
+//     try {
+//         console.log("Filling out the form");
+
+//         // Wait for the form to be visible
+//         await page.waitForSelector('input[name="P2_ENTITY_NAME"]', { visible: true, timeout: 120000 });
+//         await page.waitForSelector('button.t-Button--hot', { visible: true, timeout: 120000 });
+
+//         // Fill out the form fields
+//         await page.type('input[name="P2_ENTITY_NAME"]', data.Payload.Name.Legal_Name);
+
+//         console.log('Form filled out.');
+//     } catch (err) {
+//         console.error("Error during form filling:", err.message);
+//         throw err;
+//     }
+// }
+
+// async function submitForm(page) {
+//     try {
+//         console.log("Submitting the form");
+
+//         // Trigger the onclick event of the submit button using the id
+//         await page.evaluate(() => {
+//             const submitButton = document.getElementById('B78886587564901765');
+//             if (submitButton) {
+//                 submitButton.click(); // Trigger the button's click event
+//             } else {
+//                 throw new Error('Submit button not found');
+//             }
+//         });
+
+//         console.log('Submit button clicked via onclick event.');
+
+//         // Wait for navigation after form submission
+//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+
+//         console.log('Navigation after submission complete.');
+//     } catch (err) {
+//         console.error("Error during form submission or navigation:", err.message);
+//         throw err;
+//     }
+// }
+
+
+// async function addDataLLC(page, data) {
+//     try {
+//         // Fill out the form
+//         await fillForm(page, data);
+
+//         // Submit the form and handle navigation
+//         await submitForm(page);
+
+//         // Proceed to the next page or action
+//         await fillNextPage(page, data);
+
+//     } catch (e) {
+//         // Specific handling for errors
+//         if (e.message.includes('Execution context was destroyed')) {
+//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+//         } else {
+//             console.error("Adding name failed:", e.message);
+//         }
+
+//         // Return a specific error message as required
+//         throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+//     }
+// }
+
 
 async function addDataLLC(page, data) {
     try {
         console.log("Attempting to add the name");
 
+        // Wait for the form to be available
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
 
+        // Fill out the form and submit
         await page.evaluate((data) => {
             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
@@ -326,20 +416,25 @@ async function addDataLLC(page, data) {
                 throw new Error("Couldn't find name field or submit button");
             }
 
+            // Set the name and checkbox values
             nameField.value = data.Payload.Name.Legal_Name;
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
 
+            // Trigger form submission
             submitButton.click();
         }, data);
 
         try {
-
+            // Wait for navigation after form submission
             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
+
+        // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
 
         const isDuplicate =await page.evaluate(()=>{
 
@@ -361,21 +456,22 @@ async function addDataLLC(page, data) {
                     return null;
                 }
                 console.log("Table found:", table);
-
+        
+                // Change: Select the second row (first data row) instead of the first row
                 const row = table.querySelectorAll('tbody tr')[1];
                 if (!row) {
                     console.error("Row not found");
                     return null;
                 }
                 console.log("Row found:", row);
-
+        
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 4) {
                     console.error("Not enough cells found");
                     return null;
                 }
                 console.log("Cells found:", cells);
-
+        
                 return {
                     name: cells[0].textContent.trim(),
                     dosid: cells[1].textContent.trim(),
@@ -383,16 +479,17 @@ async function addDataLLC(page, data) {
                     county: cells[3].textContent.trim()
                 };
             });
-
+        
             if (!entityDetails) {
                 throw new Error("Failed to retrieve entity details from the table.");
             }
             throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
         }
-
+        
+        
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage !== null;  
+            return errorMessage !== null;  // Returns true if any error message is present
         });
 
         if (nameInvalid) {
@@ -406,14 +503,17 @@ async function addDataLLC(page, data) {
         }
 
         console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
 
         console.log("Name added successfully!");
         await fillNextPage(page, data);
 
         return { success: true, message: "Name added successfully" };
 
-    } catch (e) {
 
+    } catch (e) {
+        // Specific error handling
         let errorResponse = {
             success: false,
             error: e.message
@@ -434,7 +534,7 @@ async function addDataLLC(page, data) {
 
         console.error("An error occurred:", errorResponse.error);
         return errorResponse;
-
+        // Re-throw the error if necessary
     }
 }
 
@@ -442,8 +542,10 @@ async function addDataCorp(page, data) {
     try {
         console.log("Attempting to add the name");
 
+        // Wait for the form to be available
         await page.waitForSelector('form', { visible: true, timeout: 12000000 });
 
+        // Fill out the form and submit
         await page.evaluate((data) => {
             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
@@ -453,20 +555,25 @@ async function addDataCorp(page, data) {
                 throw new Error("Couldn't find name field or submit button");
             }
 
+            // Set the name and checkbox values
             nameField.value = data.Payload.Name.CD_Legal_Name;
             if (checkbox) {
                 checkbox.checked = data.checked;
             }
 
+            // Trigger form submission
             submitButton.click();
         }, data);
 
         try {
-
+            // Wait for navigation after form submission
             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
         } catch (err) {
             console.log("Page did not navigate, likely staying on the same page due to an error.");
         }
+
+        // Check if the error message about the unacceptable name appears
+        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
 
         const isDuplicate =await page.evaluate(()=>{
 
@@ -488,21 +595,22 @@ async function addDataCorp(page, data) {
                     return null;
                 }
                 console.log("Table found:", table);
-
+        
+                // Change: Select the second row (first data row) instead of the first row
                 const row = table.querySelectorAll('tbody tr')[1];
                 if (!row) {
                     console.error("Row not found");
                     return null;
                 }
                 console.log("Row found:", row);
-
+        
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 4) {
                     console.error("Not enough cells found");
                     return null;
                 }
                 console.log("Cells found:", cells);
-
+        
                 return {
                     name: cells[0].textContent.trim(),
                     dosid: cells[1].textContent.trim(),
@@ -510,7 +618,7 @@ async function addDataCorp(page, data) {
                     county: cells[3].textContent.trim()
                 };
             });
-
+        
             if (!entityDetails) {
                 throw new Error("Failed to retrieve entity details from the table.");
             }
@@ -518,7 +626,7 @@ async function addDataCorp(page, data) {
         }
         const nameInvalid = await page.evaluate(() => {
             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage !== null;  
+            return errorMessage !== null;  // Returns true if any error message is present
         });
 
         if (nameInvalid) {
@@ -532,14 +640,18 @@ async function addDataCorp(page, data) {
         }
 
         console.log("Entity name is valid.");
+        // If the error message exists, throw an error
+       
 
         console.log("Name added successfully!");
         await fillNextPageCorp(page, data)
 
         return { success: true, message: "Name added successfully" };
 
-    } catch (e) {
 
+    } catch (e) {
+        // Specific error handling
+        // Specific error handling
         let errorResponse = {
             success: false,
             error: e.message
@@ -560,24 +672,207 @@ async function addDataCorp(page, data) {
 
         console.error("An error occurred:", errorResponse.error);
         return errorResponse;
-
+        
     }
 }
+
+
+
+
+// async function addDataCorp(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
+
+//         // Wait for the form to be available
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         // Fill out the form and submit
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
+
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+
+//             // Set the name and checkbox values
+//             nameField.value = data.Payload.Name.Legal_Name;
+//             if (checkbox) {
+//                 checkbox.checked = data.checked;
+//             }
+
+//             // Trigger form submission
+//             submitButton.click();
+//         }, data);
+
+//         // Wait for either navigation or an error message to appear
+//         try {
+//             // Wait for navigation after form submission
+//             await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
+//         } catch (err) {
+//             console.log("Page did not navigate, likely staying on the same page due to an error.");
+//         }
+
+//         // Check if the error message about the unacceptable name appears
+//         await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+//         const nameInvalid = await page.evaluate(() => {
+//             const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+//             return errorMessage && errorMessage.innerText.includes('The proposed entity name is unacceptable');
+//         });
+
+//         // If the error message exists, throw an error
+//         if (nameInvalid) {
+//             throw new Error(`${data.Payload.Name.Legal_Name} Name is Invalid`);
+//         }
+
+//         console.log("Name added successfully!");
+//         await fillNextPageCorp(page, data)
+
+//     } catch (e) {
+//         // Specific error handling
+//         if (e.message.includes('Execution context was destroyed')) {
+//             console.error("Error: Execution context was destroyed, possibly due to page navigation.");
+//         } else if (e.message.includes('Name is Invalid')) {
+//             console.error(e.message);
+//         } else {
+//             console.error("An error occurred:", e.message);
+//         }
+
+//         // Re-throw the error if necessary
+//         throw e;
+//     }
+// }
+
+// async function addDataCorp(page, data) {
+//     try {
+//         console.log("Attempting to add the name");
+//         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+//         await page.evaluate((data) => {
+//             const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+//             const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+//             const submitButton = document.querySelector('button.t-Button--hot');
+
+
+//             if (!nameField || !submitButton) {
+//                 throw new Error("Couldn't find name field or submit button");
+//             }
+//             // //Corporation, Corp., Limited, Ltd., Incorporated, Inc.
+//             // if(data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc") ){
+//             //     nameField.value = data.Payload.Name.Legal_Name;
+
+//             // }
+//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc")) && data.Payload.Name.Legal_Name.includes(" "))){
+//             //     const error = new Error("Company name does not contain any allowed terms such as 'Corporation, Corp., Limited, Ltd., Incorporated, Inc.'");
+//             //     error.statusCode = 400 ; 
+//             //     throw error;
+//             // } 
+//             // else if(!((data.Payload.Name.Legal_Name.includes("Corporation") || data.Payload.Name.Legal_Name.includes("Corp.") || data.Payload.Name.Legal_Name.includes("Limited") ||data.Payload.Name.Legal_Name.includes("Ltd") ||data.Payload.Name.Legal_Name.includes("Incorporated") || data.Payload.Name.Legal_Name.includes("Inc.") || data.Payload.Name.Legal_Name.includes("Inc"))) && !(data.Payload.Name.Legal_Name.includes(" ")) ) {
+//             //     nameField.value = data.Payload.Name.Legal_Name;
+//             //     nameField.value=nameField.value+" Corp."
+//             //     // const error = new Error("Company name does not contain any allowed terms such as 'LLC', 'Limited Liability Company', or 'LL.C.'");
+//             //     // error.statusCode = 400 ; 
+//             //     // throw error;
+
+
+//             // } 
+//             const entityDesignations = [
+//                 "L.L.C.", "Limited Liability Co.", "Limited Liability Corporation",
+//                "LLC","Limited Liability Company","L.L.C.",
+//                "PLC", "Public Limited Company", "LLP", "Limited Liability Partnership",
+//                "LP", "Limited Partnership", "L.P.", "General Partnership", "GP",
+//                "Sole Proprietorship", "Sole Trader", "Co.", "Company", "Cooperative",
+//                "Mutual", "Association","Pvt Ltd"
+//            ];
+           
+//            try {
+//                let legalName = data.Payload.Name.Legal_Name;
+           
+//                entityDesignations.forEach(term => {
+//                    const regex = new RegExp(`\\b${term}\\b`, 'i');
+//                    legalName = legalName.replace(regex, '').trim();
+//                });
+           
+//                if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+//                    nameField.value = legalName;
+//                } else {
+//                    nameField.value = `${legalName} Corp.`;
+//                }
+
+
+//             if (checkbox) {
+//                 checkbox.checked = data.checked;
+//             }
+//             submitButton.click();
+//         }  catch (e) {
+//             return { status: 'error', message: e.message };
+//         }
+
+
+//         }, data);
+
+    
+
+
+//         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+//         log('Name added and continue button clicked.');
+
+//         await fillNextPageCorp(page, data);
+//     } catch (e) {
+//         await page.evaluate((message) => {
+//             const errorDiv = document.createElement('div');
+//             errorDiv.textContent = `Adding name failed: ${message}`;
+//             errorDiv.style.position = 'fixed';
+//             errorDiv.style.top = '0';
+//             errorDiv.style.left = '0';
+//             errorDiv.style.backgroundColor = 'red';
+//             errorDiv.style.color = 'white';
+//             errorDiv.style.padding = '10px';
+//             errorDiv.style.zIndex = '1000';
+//             document.body.appendChild(errorDiv);
+//         }, e.message);
+//         console.error("Adding name failed:", e);
+//     }
+// }
 
 async function fillNextPageCorp(page, data) {
     try {
         console.log("Filling the next page...");
 
+
+
         await page.evaluate((data) => {
+           
+
+            // document.querySelector('input[name="P3_ENTITY_NAME"]').value = data.Payload.Name.Legal_Name+" Corp.";
+
+            
 
             let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
+
+            // entityDesignations.forEach(term => {
+            //     const regex = new RegExp(`\\b${term}\\b`, 'i');
+            //     legalName = legalName.replace(regex, '').trim();
+            // });
+
+            // if (legalName.includes("Corporation") || legalName.includes("Corp.") || legalName.includes("Limited") || legalName.includes("Ltd.") || legalName.includes("Incorporated") || legalName.includes("Inc.")) {
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = legalName;
+            // } else {
+            //     // Append " LLC" if there are no terms and no space
+            //     document.querySelector('input[name="P3_ENTITY_NAME"]').value = `${legalName} Corp.`;
+            // }
+            // // document.querySelector('#P3_COUNTY').value = "4";
 
             const dropdown= document.querySelector('#P3_COUNTY')
             const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
                 dropdown.value=option.value ;
             }
+
+
 
             const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
             effectiveDate.scrollIntoView()
@@ -682,7 +977,7 @@ async function fillNextPageCorp(page, data) {
             if(nameparts.length === 3){
                 document.querySelector('input[name="P3_INCORP_FNAME"]').value = nameparts[0];
                 document.querySelector('input[name="P3_INCORP_LNAME"]').value = nameparts[2]; 
-
+                
                 document.querySelector('input[name="P3_INCORP_MI"]').value = nameparts[1]; 
 
             }
@@ -696,10 +991,14 @@ async function fillNextPageCorp(page, data) {
                 document.querySelector('input[name="P3_INCORP_LNAME"]').value = nameparts[0] ;
             }
 
+
             document.querySelector('input[name="P3_INCORP_ADDR1"]').value = data.Payload.Incorporator_Information.Address.Inc_Address_Line1;
             document.querySelector('input[name="P3_INCORP_CITY"]').value = data.Payload.Incorporator_Information.Address.Inc_City;
             document.querySelector('input[name="P3_INCORP_POSTAL_CODE"]').value = data.Payload.Incorporator_Information.Address.Inc_Postal_Code;
             document.querySelector('input[name="P3_SIGNATURE"]').value = data.Payload.Incorporator_Information.Incorporator_Details.Name ;
+
+
+            // stock 
 
             const stockInfo = data.Payload.Stock_Information;
             console.log("Stock information is :=" ,stockInfo)
@@ -719,33 +1018,45 @@ if (stockType === 'PV') {
     document.querySelector('#P3_SHARE_VALUE').dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-const clickedButton = 'ServiceCompany'; 
+           
+
+const clickedButton = 'ServiceCompany'; // Example: this value will come based on your condition
 
 if (clickedButton === 'ServiceCompany') {
-
+  // Populate fields for Service Company
+  
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
 
+   
+
 } else if (clickedButton === 'SOP') {
-
+  // Populate fields for SOP
+  
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
 
+  
 } else if (clickedButton === 'Incorporator') {
-
+  // Populate fields for Incorporator
+  
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
     document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+
+  
+
+        
 
         console.log("Next page filled.");
 
     } },data)}
-
+    
     catch (e) {
         await page.evaluate((message) => {
             const errorDiv = document.createElement('div');
@@ -765,6 +1076,7 @@ if (clickedButton === 'ServiceCompany') {
     }
     await page.hover('button.t-Button--hot');
 
+
     await page.evaluate(() => {
                     const submitButton = document.querySelector('button.t-Button--hot');
                     if (submitButton) {
@@ -774,21 +1086,26 @@ if (clickedButton === 'ServiceCompany') {
                 });
 }
 
+
 async function fillNextPage(page, data) {
     try {
         console.log("Filling the next page...");
 
         await page.waitForSelector('div#P4_INITIAL_STATEMENT_CONTAINER', { visible: true, timeout: 30000 });
 
+
         await page.evaluate((data) => {
             const radioButtons = document.querySelectorAll('input[name="P4_INITIAL_STATEMENT"]');
             if (radioButtons.length > 0) {
                 radioButtons[0].checked = true;
             }
-
+            
             let legalName = data.Payload.Name.CD_Legal_Name;
             document.querySelector('input[name="P4_ENTITY_NAME"]').value = legalName;
-
+            // Set the value in the input field
+            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = nameField.value;
+            // document.querySelector('input[name="P4_ENTITY_NAME"]').value = data.Payload.Name.Alternate_Legal_Name+" LLC";
+            // document.querySelector('#P4_COUNTY').value = "4";
             const dropdown= document.querySelector('#P4_COUNTY')
             const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
             if(option){
@@ -926,6 +1243,7 @@ async function fillNextPage(page, data) {
     }
     await page.hover('button.t-Button--hot');
 
+
     await page.evaluate(() => {
                     const submitButton = document.querySelector('button.t-Button--hot');
                     if (submitButton) {
@@ -967,6 +1285,9 @@ async function adjustViewport(page) {
     });
 }
 
+
+
+
 app.listen(port, () => {
-    console.log(`Server listening at http:
+    console.log(`Server listening at http://localhost:${port}`);
 });

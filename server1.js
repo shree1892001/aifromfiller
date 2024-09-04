@@ -821,7 +821,6 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         try {
             firstLinkUrl = await page.evaluate(() => {
                 const firstLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(1) a.t-LinksList-link');
-                firstLink.scrollIntoView();
                 return firstLink ? firstLink.getAttribute('href') : null;
             });
         } catch (error) {
@@ -850,7 +849,6 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             try {
                 secondLinkUrl = await page.evaluate(() => {
                     const secondLink = document.querySelector('ul.t-LinksList li.t-LinksList-item:nth-child(2) a.t-LinksList-link');
-                    secondLink.scrollIntoView();
                     return secondLink ? secondLink.getAttribute('href') : null;
                 });
             } catch (error) {
@@ -1329,11 +1327,8 @@ async function fillNextPageCorp(page, data) {
 
 
             const effectiveDate = document.querySelector('input#P3_EXISTENCE_OPTION_0');
-            effectiveDate.scrollIntoView()
             const Dissolution_Date = document.querySelector('input#P3_DURATION_OPTION_0');
-            Dissolution_Date.scrollIntoView()
             const liability_statement = document.querySelector('input#P3_LIAB_STATEMENT_0');
-            liability_statement.scrollIntoView()
 
             if (effectiveDate) {
                 effectiveDate.click();
@@ -1509,7 +1504,11 @@ if (clickedButton === 'ServiceCompany') {
 
         console.log("Next page filled.");
 
-    } },data)}
+
+    } },data)
+
+    await randomSleep(10000, 220000);
+}
     
     catch (e) {
         await page.evaluate((message) => {
@@ -1563,13 +1562,13 @@ async function fillNextPage(page, data) {
                 dropdown.value=option.value ;
             }
             const effectiveDate = document.querySelector('input#P4_EXISTENCE_OPTION_0');
-            effectiveDate.scrollIntoView()
             const Dissolution_Date = document.querySelector('input#P4_DISSOLUTION_OPTION_0');
             Dissolution_Date.scrollIntoView()
             const liability_statement = document.querySelector('input#P4_LIAB_STATEMENT_0');
             liability_statement.scrollIntoView()
 
-            if (data.Payload.effectiveDate) {
+            // if (data.Payload.effectiveDate) {
+            if(effectiveDate){
                 effectiveDate.click();
                 const radio1 = document.querySelector("input#P4_EXISTENCE_TYPE_0");
                 const radio2 = document.querySelector("input#P4_EXISTENCE_TYPE_1");
