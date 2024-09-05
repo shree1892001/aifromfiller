@@ -164,7 +164,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                   });
                   await Promise.race([
                     page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
-                    page.waitForSelector('#businessName', { visible: true, timeout: 60000 })
+                    page.waitForSelector('#txtName', { visible: true, timeout: 60000 })
                   ]);
                   await page.evaluate(() => {
                     __doPostBack('ctl00$MainContent$slctBusType', '');
@@ -174,9 +174,22 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 await page.click('#MainContent_ContinueButton');
                 await Promise.race([
                     page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
-                    page.waitForSelector('#businessName', { visible: true, timeout: 60000 })
+                    page.waitForSelector('#txtName', { visible: true, timeout: 60000 })
                   ]);
-                  
+                  await page.waitForSelector("#txtName",{ visible: true, timeout: 60000 })
+                  await page.evaluate(() => {
+                    const inputElement = document.querySelector('#txtName');
+                    inputElement.value = data.Payload.Name.CD_Legal_Name;
+                    inputElement.dispatchEvent(new Event('input', { bubbles: true })); // Trigger input event
+                    inputElement.dispatchEvent(new Event('change', { bubbles: true })); // Trigger change event
+                });
+                await page.type('#txtName', data.Payload.Name.CD_Legal_Name);
+                await page.waitForSelector("#txtNameConfirm",{ visible: true, timeout: 60000 });
+                await page.type('#txtNameConfirm', data.Payload.Name.CD_Legal_Name);
+                
+
+
+
 
 
 
