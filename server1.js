@@ -85,6 +85,710 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         else if(jsonData.State.stateFullDesc=="Florida"){
             await handleFL(page,jsonData); 
         }
+        else if(jsonData.State.stateFullDesc=="Wyoming"){
+
+            await handleWy(page,jsonData);
+
+        }
+        async function handleWy(page, data) {
+
+            await retry(async () => {
+
+              try {
+                console.log("Navigating to the Landing page...");
+
+
+                await page.goto(jsonData.State.stateUrl, {
+                  waitUntil: 'networkidle0',
+                  timeout: 60000
+                });
+                console.log('Landing Page Loaded');
+              } catch (error) {
+                console.error("Error navigating to the Landing page:", error.message);
+                throw new Error("Navigation to the Landing page failed.");
+              }
+            }, 5, page);
+          
+            await randomSleep(3000, 5000);
+            await performEventsonLandingPage(page);
+          
+            await adjustViewport(page);
+          
+            console.log("Waiting for the list to appear...");
+          
+            async function performEventsonLandingPage(page) {
+              try {
+                console.log("Attempting to interact with the landing page...");
+          
+                await page.waitForSelector('form', { visible: true, timeout: 120000 });
+                console.log("Form found.");
+          
+                
+                const submitButtonExists = await page.evaluate(() => {
+                  const submitButton = document.querySelector('#regStartNow');
+                  console.log("Submit button found:", !!submitButton);
+                  return !!submitButton;
+                });
+          
+                if (!submitButtonExists) {
+                  throw new Error("Submit button not found.");
+                }
+                await page.click('#regStartNow');
+                console.log("Submit button clicked.");
+          
+                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+                console.log('Form submission successful.');
+          
+              } catch (e) {
+                console.error("Form submission failed:", e.message);
+                return { status: 'error', message: e.message };
+              }
+            }
+          
+            await adjustViewport(page);
+          
+            if(json.EntityType == 'LLC'){
+                await page.evaluate(() => {
+                    const dropdown = document.querySelector('#MainContent_slctBusType');
+                    const options = Array.from(dropdown.options);
+                    const optionToSelect = options.find(option => option.text.includes('Limited Liability Company (Domestic)')); // Match the text
+                    if (optionToSelect) {
+                      dropdown.value = optionToSelect.value;
+                      dropdown.text=optionToSelect.text; 
+              
+                      dropdown.dispatchEvent(new Event('change', { bubbles: true })); // Trigger onchange event
+              
+                      
+                    }
+
+                  });
+                  await Promise.race([
+                    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
+                    page.waitForSelector('#businessName', { visible: true, timeout: 60000 })
+                  ]);
+                  await page.evaluate(() => {
+                    __doPostBack('ctl00$MainContent$slctBusType', '');
+                });
+                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+                await page.click('#MainContent_chkAgree');
+                await page.click('#MainContent_ContinueButton');
+                await Promise.race([
+                    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
+                    page.waitForSelector('#businessName', { visible: true, timeout: 60000 })
+                  ]);
+                  
+
+
+
+
+
+            
+          
+            if (data.certificateOfStatus) {
+              await page.click('#cos_num_flag');
+              await randomSleep(1000, 3000);
+            }
+            if (data.certifiedCopy) {
+              await page.click('#cert_num_flag');
+              await randomSleep(1000, 3000);
+            }
+            try{ 
+
+                let legalName =data.llcName; 
+                if(legalName.includes("LLC") || legalName.includes("L.L.C.") || legalName.includes("Limited Liability Company")){
+          
+                await page.type('#corp_name', data.llcName);
+                await randomSleep(1000, 3000);
+                return { success: true, message: "Name added successfully" };
+                }else{
+
+                    throw new Error("Name of the entity is invalid it should end with either LLC/L.L.C. / Limited Liability Company")
+                }
+            
+            }catch(e){
+
+                let errorResponse = {
+                    success: false,
+                    error: e.message
+                };
+                if(e.message.includes("Name of entity is invalid")){
+                    errorResponse.error=e.message; 
+                }
+            
+            
+            }  
+            await page.type('#princ_addr1', data.principalPlace.address);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_addr2', data.principalPlace.suite);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_city', data.principalPlace.city);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_st', data.principalPlace.state);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_zip', data.principalPlace.zip);
+            await randomSleep(1000, 3000);
+            await page.type('#princ_cntry', data.principalPlace.country);
+            await randomSleep(1000, 3000);
+          
+            if (data.mailingAddressSameAsPrincipal) {
+              await page.click('#same_addr_flag');
+              await randomSleep(1000, 3000);
+            } else {
+              await page.type('#mail_addr1', data.mailingAddress.address);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_addr2', data.mailingAddress.suite);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_city', data.mailingAddress.city);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_st', data.mailingAddress.state);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_zip', data.mailingAddress.zip);
+              await randomSleep(1000, 3000);
+              await page.type('#mail_cntry', data.mailingAddress.country);
+              await randomSleep(1000, 3000);
+            }
+          
+            if (data.Registered_Agent.Name.lastName) {
+              await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
+              await randomSleep(1000, 3000);
+              await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+              await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+              await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+              await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+
+            }
+            else if(data.Registered_Agent.Name.Corp_Name){
+                  await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                  await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                  await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                  await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                  await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+
+
+
+
+            }
+            await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
+
+          
+            if (data.purpose) {
+              await page.type('#purpose', data.purpose);
+              await randomSleep(1000, 3000);
+            }
+            if(data.Correspondance.Name){
+
+                await page.type('#ret_name',data.Correspondance.Name);
+                await page.type('#ret_email_addr',data.Correspondance.Email);
+                await page.type('#email_addr_verify',data.Correspondance.Email);
+            }
+            await page.type('#signature',data.Correspondance.Name);
+            if(data.Manager.Name.FirstName){
+            await page.type('#off1_name_title', data.Manager.Name.Title1);
+            await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
+            await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
+          await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
+           await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
+
+           await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+           await page.type('#off1_name_city', data.Manager.Address.City1);
+           await page.type('#off1_name_st', data.Manager.Address.State1);
+           await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+           await page.type('#off1_name_cntry', data.Manager.Address.Country1)
+
+           //second manager
+           await page.type('#off2_name_title', data.Manager.Name.Title2);
+           await page.type('#off2_name_last_name', data.Manager.Name.LastName2);
+           await page.type('#off2_name_first_name', data.Manager.Name.FirstName2);
+         await page.type('#off2_name_m_name', data.Manager.Name.MidInitial2);
+          await page.type('#off2_name_title_name', data.Manager.Name.Name_Title2);
+
+
+          await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+          await page.type('#off2_name_city', data.Manager.Address.City2);
+          await page.type('#off2_name_st', data.Manager.Address.State2);
+          await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+          await page.type('#off2_name_cntry', data.Manager.Address.Country2)
+          //third manager
+          await page.type('#off3_name_title', data.Manager.Name.Title3);
+          await page.type('#off3_name_last_name', data.Manager.Name.LastName33);
+          await page.type('#off3_name_first_name', data.Manager.Name.FirstName3);
+        await page.type('#off3_name_m_name', data.Manager.Name.MidInitial3);
+         await page.type('#off3_name_title_name', data.Manager.Name.Name_Title3);
+         await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+         await page.type('#off3_name_city', data.Manager.Address.City3);
+         await page.type('#off3_name_st', data.Manager.Address.State3);
+         await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+         await page.type('#off3_name_cntry', data.Manager.Address.Country3)
+         //fourth
+         await page.type('#off4_name_title', data.Manager.Name.Title4);
+         await page.type('#off4_name_last_name', data.Manager.Name.LastName4);
+         await page.type('#off4_name_first_name', data.Manager.Name.FirstName4);
+       await page.type('#off4_name_m_name', data.Manager.Name.MidInitial4);
+        await page.type('#off4_name_title_name', data.Manager.Name.Name_Title4);
+
+        await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+        await page.type('#off4_name_city', data.Manager.Address.City4);
+        await page.type('#off4_name_st', data.Manager.Address.State4);
+        await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+        await page.type('#off4_name_cntry', data.Manager.Address.Country4)
+        //fifth
+        await page.type('#off5_name_title', data.Manager.Name.Title5);
+        await page.type('#off5_name_last_name', data.Manager.Name.LastName5);
+        await page.type('#off5_name_first_name', data.Manager.Name.FirstName5);
+      await page.type('#off5_name_m_name', data.Manager.Name.MidInitial5);
+       await page.type('#off5_name_title_name', data.Manager.Name.Name_Title5);
+
+       await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+       await page.type('#off5_name_city', data.Manager.Address.City5);
+       await page.type('#off5_name_st', data.Manager.Address.State5);
+       await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+       await page.type('#off5_name_cntry', data.Manager.Address.Country5)
+
+       await page.type('#off6_name_title', data.Manager.Name.Title6);
+       await page.type('#off6_name_last_name', data.Manager.Name.LastName6);
+       await page.type('#off6_name_first_name', data.Manager.Name.FirstName6);
+     await page.type('#off6_name_m_name', data.Manager.Name.MidInitial6);
+      await page.type('#off6_name_title_name', data.Manager.Name.Name_Title6);
+
+
+      await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+      await page.type('#off6_name_city', data.Manager.Address.City6);
+      await page.type('#off6_name_st', data.Manager.Address.State6);
+      await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+      await page.type('#off6_name_cntry', data.Manager.Address.Country6)
+            }
+            else if(data.Manager.Name.entityName){
+
+                if (data.Manager.Name.entityName.length > 42) {
+                    throw new Error('Entity Name exceeds 42 characters.');
+                  }
+                  if (data.Manager.Address.streetAddress.length  > 42) {
+                    throw new Error('Street Address exceeds 42 characters.');
+                  }
+                  if (data.Manager.Address.City.length > 28) {
+                    throw new Error('City exceeds 28 characters.');
+                  }
+                  if (data.Manager.Address.State.length > 2) {
+                    throw new Error('State exceeds 2 characters.');
+                  }
+                  if (data.Manager.Address.postal_code.length > 9) {
+                    throw new Error('Zip Code exceeds 9 characters.');
+                  }
+                  if (data.Manager.Address.Country.length > 2) {
+                    throw new Error('Country exceeds 2 characters.');
+                  }
+                
+                  // Fill in the form fields
+                  await page.type('#off1_name_corp_name', data.Manager.Name.entityName1);
+                  await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+                  await page.type('#off1_name_city', data.Manager.Address.City1);
+                  await page.type('#off1_name_st', data.Manager.Address.State1);
+                  await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+                  await page.type('#off1_name_cntry', data.Manager.Address.Country1);
+
+                  await page.type('#off2_name_corp_name', data.Manager.Name.entityName2);
+                  await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+                  await page.type('#off2_name_city', data.Manager.Address.City2);
+                  await page.type('#off2_name_st', data.Manager.Address.State2);
+                  await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+                  await page.type('#off2_name_cntry', data.Manager.Address.Country2);
+
+                  await page.type('#off3_name_corp_name', data.Manager.Name.entityName3);
+                  await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+                  await page.type('#off3_name_city', data.Manager.Address.City3);
+                  await page.type('#off3_name_st', data.Manager.Address.State3);
+                  await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+                  await page.type('#off3_name_cntry', data.Manager.Address.Country3);
+
+                  await page.type('#off4_name_corp_name', data.Manager.Name.entityName4);
+                  await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+                  await page.type('#off4_name_city', data.Manager.Address.City4);
+                  await page.type('#off4_name_st', data.Manager.Address.State4);
+                  await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+                  await page.type('#off4_name_cntry', data.Manager.Address.Country4);
+
+                  await page.type('#off5_name_corp_name', data.Manager.Name.entityName5);
+                  await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+                  await page.type('#off5_name_city', data.Manager.Address.City5);
+                  await page.type('#off5_name_st', data.Manager.Address.State5);
+                  await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+                  await page.type('#off5_name_cntry', data.Manager.Address.Country5);
+
+                  await page.type('#off6_name_corp_name', data.Manager.Name.entityName6);
+                  await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+                  await page.type('#off6_name_city', data.Manager.Address.City6);
+                  await page.type('#off6_name_st', data.Manager.Address.State6);
+                  await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+                  await page.type('#off6_name_cntry', data.Manager.Address.Country6);
+                
+            }
+            await page.waitForSelector('input[name="submit"]', { visible: true, timeout: 60000 });
+        
+
+        
+          await page.evaluate(() => {
+              document.querySelector('input[name="submit"]').submit();
+            });
+          
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+            console.log('Form submitted successfully');
+
+            return { success: true, message: "Name added successfully" };
+            }
+
+        
+        else if(data.orderShortName=="CORP"){
+            await retry(async () => {
+
+                try {
+                  console.log("Navigating to the Landing page...");
+  
+  
+                  await page.goto(jsonData.State.stateUrl, {
+                    waitUntil: 'networkidle0',
+                    timeout: 60000
+                  });
+                  console.log('Landing Page Loaded');
+                } catch (error) {
+                  console.error("Error navigating to the Landing page:", error.message);
+                  throw new Error("Navigation to the Landing page failed.");
+                }
+              }, 5, page);
+            
+              await randomSleep(3000, 5000);
+              await performEventsonLandingPage(page);
+            
+              await adjustViewport(page);
+            
+              console.log("Waiting for the list to appear...");
+            
+              async function performEventsonLandingPage(page) {
+                try {
+                  console.log("Attempting to interact with the landing page...");
+            
+                  await page.waitForSelector('form', { visible: true, timeout: 120000 });
+                  console.log("Form found.");
+            
+                  const checkboxExists = await page.evaluate(() => {
+                    const checkbox = document.querySelector('input[name="Disclaimer"]');
+                    console.log("Checkbox found:", !!checkbox);
+                    return !!checkbox;
+                  });
+            
+                  if (!checkboxExists) {
+                    throw new Error("Checkbox not found.");
+                  }
+            
+                  await page.click('input[name="Disclaimer"]');
+                  console.log("Disclaimer checkbox checked.");
+            
+                  const submitButtonExists = await page.evaluate(() => {
+                    const submitButton = document.querySelector('input[name="submit"]');
+                    console.log("Submit button found:", !!submitButton);
+                    return !!submitButton;
+                  });
+            
+                  if (!submitButtonExists) {
+                    throw new Error("Submit button not found.");
+                  }
+            
+                  await page.click('input[name="submit"]');
+                  console.log("Submit button clicked.");
+            
+                  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+                  console.log('Form submission successful.');
+            
+                } catch (e) {
+                  console.error("Form submission failed:", e.message);
+                  return { status: 'error', message: e.message };
+                }
+              }
+            
+              await adjustViewport(page);
+            
+              console.log("Next step completed and preview loaded.");
+              await randomSleep(18000, 22000);
+            
+              await page.evaluate(() => {
+                document.querySelector('input[name="filing_type"]').value = 'LLC';
+                document.querySelector('input[name="track_number"]').value = '100435715291';
+                document.querySelector('input[name="menu_function"]').value = 'ADD';
+              });
+            
+              if (data.effectiveDate) {
+                await page.type('#eff_date_mm', data.effectiveDate.month);
+                await randomSleep(1000, 3000);
+                await page.type('#eff_date_dd', data.effectiveDate.day);
+                await randomSleep(1000, 3000);
+                await page.type('#eff_date_yyyy', data.effectiveDate.year);
+                await randomSleep(1000, 3000);
+              }
+            
+              if (data.certificateOfStatus) {
+                await page.click('#cos_num_flag');
+                await randomSleep(1000, 3000);
+              }
+              if (data.certifiedCopy) {
+                await page.click('#cert_num_flag');
+                await randomSleep(1000, 3000);
+              }
+              try{
+              let legalName=data.llcName; 
+
+
+              if(legalName.includes("Corp") || legalName.includes("Inc.") || legalName.includes("Incorporated")){
+
+            
+              await page.type('#corp_name', legalName);
+
+              }else {
+
+                throw new Error("Name of the comapny is invalid it should end with Corp / Inc. / Incorporated")
+              }
+              await randomSleep(1000, 3000);
+              return { success: true, message: "Name added successfully" };
+
+            }catch(e){
+                let errorResponse = {
+                    success: false,
+                    error: e.message
+                };
+                if(e.message.includes("Name of entity is invalid")){
+                    errorResponse.error=e.message; 
+                }
+
+            }
+              
+            
+              await page.type('#princ_addr1', data.principalPlace.address);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_addr2', data.principalPlace.suite);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_city', data.principalPlace.city);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_st', data.principalPlace.state);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_zip', data.principalPlace.zip);
+              await randomSleep(1000, 3000);
+              await page.type('#princ_cntry', data.principalPlace.country);
+              await randomSleep(1000, 3000);
+            
+              if (data.mailingAddressSameAsPrincipal) {
+                await page.click('#same_addr_flag');
+                await randomSleep(1000, 3000);
+              } else {
+                await page.type('#mail_addr1', data.mailingAddress.address);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_addr2', data.mailingAddress.suite);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_city', data.mailingAddress.city);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_st', data.mailingAddress.state);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_zip', data.mailingAddress.zip);
+                await randomSleep(1000, 3000);
+                await page.type('#mail_cntry', data.mailingAddress.country);
+                await randomSleep(1000, 3000);
+              }
+            
+              if (data.Registered_Agent.Name.lastName) {
+                await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
+                await randomSleep(1000, 3000);
+                await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+  
+              }
+              else if(data.Registered_Agent.Name.Corp_Name){
+                    await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
+                    await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
+                    await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
+                    await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
+                    await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+  
+  
+  
+  
+              }
+              await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
+  
+            
+              if (data.purpose) {
+                await page.type('#purpose', data.purpose);
+                await randomSleep(1000, 3000);
+              }
+              if(data.Correspondance.Name){
+  
+                  await page.type('#ret_name',data.Correspondance.Name);
+                  await page.type('#ret_email_addr',data.Correspondance.Email);
+                  await page.type('#email_addr_verify',data.Correspondance.Email);
+              }
+              await page.type('#signature',data.Correspondance.Name);
+              if(data.Manager.Name.FirstName){
+              await page.type('#off1_name_title', data.Manager.Name.Title1);
+              await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
+              await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
+            await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
+             await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
+  
+             await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+             await page.type('#off1_name_city', data.Manager.Address.City1);
+             await page.type('#off1_name_st', data.Manager.Address.State1);
+             await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+             await page.type('#off1_name_cntry', data.Manager.Address.Country1)
+  
+             //second manager
+             await page.type('#off2_name_title', data.Manager.Name.Title2);
+             await page.type('#off2_name_last_name', data.Manager.Name.LastName2);
+             await page.type('#off2_name_first_name', data.Manager.Name.FirstName2);
+           await page.type('#off2_name_m_name', data.Manager.Name.MidInitial2);
+            await page.type('#off2_name_title_name', data.Manager.Name.Name_Title2);
+  
+  
+            await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+            await page.type('#off2_name_city', data.Manager.Address.City2);
+            await page.type('#off2_name_st', data.Manager.Address.State2);
+            await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+            await page.type('#off2_name_cntry', data.Manager.Address.Country2)
+            //third manager
+            await page.type('#off3_name_title', data.Manager.Name.Title3);
+            await page.type('#off3_name_last_name', data.Manager.Name.LastName33);
+            await page.type('#off3_name_first_name', data.Manager.Name.FirstName3);
+          await page.type('#off3_name_m_name', data.Manager.Name.MidInitial3);
+           await page.type('#off3_name_title_name', data.Manager.Name.Name_Title3);
+           await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+           await page.type('#off3_name_city', data.Manager.Address.City3);
+           await page.type('#off3_name_st', data.Manager.Address.State3);
+           await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+           await page.type('#off3_name_cntry', data.Manager.Address.Country3)
+           //fourth
+           await page.type('#off4_name_title', data.Manager.Name.Title4);
+           await page.type('#off4_name_last_name', data.Manager.Name.LastName4);
+           await page.type('#off4_name_first_name', data.Manager.Name.FirstName4);
+         await page.type('#off4_name_m_name', data.Manager.Name.MidInitial4);
+          await page.type('#off4_name_title_name', data.Manager.Name.Name_Title4);
+  
+          await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+          await page.type('#off4_name_city', data.Manager.Address.City4);
+          await page.type('#off4_name_st', data.Manager.Address.State4);
+          await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+          await page.type('#off4_name_cntry', data.Manager.Address.Country4)
+          //fifth
+          await page.type('#off5_name_title', data.Manager.Name.Title5);
+          await page.type('#off5_name_last_name', data.Manager.Name.LastName5);
+          await page.type('#off5_name_first_name', data.Manager.Name.FirstName5);
+        await page.type('#off5_name_m_name', data.Manager.Name.MidInitial5);
+         await page.type('#off5_name_title_name', data.Manager.Name.Name_Title5);
+  
+         await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+         await page.type('#off5_name_city', data.Manager.Address.City5);
+         await page.type('#off5_name_st', data.Manager.Address.State5);
+         await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+         await page.type('#off5_name_cntry', data.Manager.Address.Country5)
+  
+         await page.type('#off6_name_title', data.Manager.Name.Title6);
+         await page.type('#off6_name_last_name', data.Manager.Name.LastName6);
+         await page.type('#off6_name_first_name', data.Manager.Name.FirstName6);
+       await page.type('#off6_name_m_name', data.Manager.Name.MidInitial6);
+        await page.type('#off6_name_title_name', data.Manager.Name.Name_Title6);
+  
+  
+        await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+        await page.type('#off6_name_city', data.Manager.Address.City6);
+        await page.type('#off6_name_st', data.Manager.Address.State6);
+        await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+        await page.type('#off6_name_cntry', data.Manager.Address.Country6)
+              }
+              else if(data.Manager.Name.entityName){
+  
+                  if (data.Manager.Name.entityName.length > 42) {
+                      throw new Error('Entity Name exceeds 42 characters.');
+                    }
+                    if (data.Manager.Address.streetAddress.length  > 42) {
+                      throw new Error('Street Address exceeds 42 characters.');
+                    }
+                    if (data.Manager.Address.City.length > 28) {
+                      throw new Error('City exceeds 28 characters.');
+                    }
+                    if (data.Manager.Address.State.length > 2) {
+                      throw new Error('State exceeds 2 characters.');
+                    }
+                    if (data.Manager.Address.postal_code.length > 9) {
+                      throw new Error('Zip Code exceeds 9 characters.');
+                    }
+                    if (data.Manager.Address.Country.length > 2) {
+                      throw new Error('Country exceeds 2 characters.');
+                    }
+                  
+                    // Fill in the form fields
+                    await page.type('#off1_name_corp_name', data.Manager.Name.entityName1);
+                    await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
+                    await page.type('#off1_name_city', data.Manager.Address.City1);
+                    await page.type('#off1_name_st', data.Manager.Address.State1);
+                    await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
+                    await page.type('#off1_name_cntry', data.Manager.Address.Country1);
+  
+                    await page.type('#off2_name_corp_name', data.Manager.Name.entityName2);
+                    await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
+                    await page.type('#off2_name_city', data.Manager.Address.City2);
+                    await page.type('#off2_name_st', data.Manager.Address.State2);
+                    await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
+                    await page.type('#off2_name_cntry', data.Manager.Address.Country2);
+  
+                    await page.type('#off3_name_corp_name', data.Manager.Name.entityName3);
+                    await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
+                    await page.type('#off3_name_city', data.Manager.Address.City3);
+                    await page.type('#off3_name_st', data.Manager.Address.State3);
+                    await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
+                    await page.type('#off3_name_cntry', data.Manager.Address.Country3);
+  
+                    await page.type('#off4_name_corp_name', data.Manager.Name.entityName4);
+                    await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
+                    await page.type('#off4_name_city', data.Manager.Address.City4);
+                    await page.type('#off4_name_st', data.Manager.Address.State4);
+                    await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
+                    await page.type('#off4_name_cntry', data.Manager.Address.Country4);
+  
+                    await page.type('#off5_name_corp_name', data.Manager.Name.entityName5);
+                    await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
+                    await page.type('#off5_name_city', data.Manager.Address.City5);
+                    await page.type('#off5_name_st', data.Manager.Address.State5);
+                    await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
+                    await page.type('#off5_name_cntry', data.Manager.Address.Country5);
+  
+                    await page.type('#off6_name_corp_name', data.Manager.Name.entityName6);
+                    await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
+                    await page.type('#off6_name_city', data.Manager.Address.City6);
+                    await page.type('#off6_name_st', data.Manager.Address.State6);
+                    await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
+                    await page.type('#off6_name_cntry', data.Manager.Address.Country6);
+                  
+              }
+              await page.waitForSelector('input[name="submit"]', { visible: true, timeout: 60000 });
+   
+            await page.evaluate(() => {
+                document.querySelector('input[name="submit"]').submit();
+              });
+            
+              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+              console.log('Form submitted successfully');
+  
+           return errorResponse;
+        }
+          }
 
         async function handleFL(page, data) {
             if(data.orderShortName=='LLC'){
@@ -1646,7 +2350,7 @@ async function fillNextPage(page, data) {
                 const check=document.querySelector('#P4_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
+                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.Name.RA_Name;
                 document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
                 document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
                 document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
@@ -1665,7 +2369,7 @@ async function fillNextPage(page, data) {
             document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
             document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
 
-            document.querySelector('#P4_FILER_NAME').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
+            document.querySelector('#P4_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
             document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
             document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
@@ -1673,7 +2377,7 @@ async function fillNextPage(page, data) {
         }, data);
 
         console.log("Next page filled.");
-        await randomSleep(10000, 220000);
+        await randomSleep(4000, 6000);
 
 
     } catch (e) {
