@@ -1,52 +1,146 @@
 const puppeteer = require('puppeteer');
+const jsonData = {
+  firstName: "John",
+  middleName: "A.",
+  lastName: "Doe",
+  addressLine1: "123 Main St",
+  addressLine2: "Apt 456",
+  city: "Cheyenne",
+  phone: "(555) 123-4567",
+  email: "john.doe@example.com",
+  consent: true
+};
 
-async function fillBusinessFormationForm() {
-  const browser = await puppeteer.launch({ headless: false }); // Set to true for headless mode
-  const page = await browser.newPage();
+(async () => {
+  let browser;
+  try {
+    browser = await puppeteer.launch({ headless: false });
+    const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(180000); // 180 seconds
 
-  // Navigate to the page (replace with actual URL)
-  await page.goto('https://www.njportal.com/DOR/BusinessFormation/CompanyInformation/BusinessName');
+    await page.goto('https://wyobiz.wyo.gov/Business/RegistrationInstr.aspx', { waitUntil: 'networkidle0' });
+    
+    // Click "Form or Register a New Business"
+    await page.waitForSelector('#regStartNow', { timeout: 60000 });
+    await page.click('#regStartNow');
 
-  // Wait for the form to load
-  await page.waitForSelector('form[action="/DOR/BusinessFormation/CompanyInformation/BusinessName/common-form?role=form"]');
+    // Select LLC from dropdown
+    await page.waitForSelector('#MainContent_slctBusType', { visible: true, timeout: 60000 });
+    await page.select('#MainContent_slctBusType', 'Limited Liability Company (Domestic)');
+    await page.evaluate(() => {
+      __doPostBack('ctl00$MainContent$slctBusType', '');
+    });
 
-  // Select business type
-  await page.select('#BusinessType', '5'); // Selecting "NJ Domestic Limited Liability Company (LLC)"
+    // Wait for navigation
+    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
-  // Fill in business name
-  await page.type('#BusinessName', 'My New Business');
+    // Check the agreement checkbox
+    await page.click('#MainContent_chkAgree');
 
-  // Click the Continue button
-  await page.click('input[type="submit"][value="Continue"]');
+    // Click "NEXT" button
+    await page.click('#MainContent_ContinueButton');
 
-  // Wait for navigation or confirmation
-  await page.waitForNavigation();
+    // Wait for entity name input
+    await page.waitForSelector('#txtName', { visible: true, timeout: 180000 });
 
-  // Check if there's a modal for foreign entities
-  const modalVisible = await page.evaluate(() => {
-    const modal = document.querySelector('#NoteForFrNf');
-    return modal && window.getComputedStyle(modal).display !== 'none';
-  });
+    // Fill in LLC name
+    const businessName = 'Redberyl LLC';
+    await page.type('#txtName', businessName);
+    await page.type('#txtNameConfirm', businessName);
+    
+    // Scroll and click "Continue"
+    await page.evaluate(() => {
+      document.querySelector('input[name="ctl00$MainContent$ContinueButton"]').scrollIntoView();
+    });
 
-  if (modalVisible) {
-    // Click the "Okay" button on the modal
-    await page.click('#NoteForFrNf .btn-success');
+    await page.waitForFunction(() => {
+      const button = document.querySelector('input[name="ctl00$MainContent$ContinueButton"]');
+      return button && !button.disabled && button.offsetParent !== null;
+    });
+
+    await page.click('input[name="ctl00$MainContent$ContinueButton"]');
+
+    // Wait for the next page form to appear
+    await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
+
+    // Fill in personal details
+    await page.type('#txtFirstName', jsonData.firstName);
+    await page.type('#txtMiddleName', jsonData.middleName);
+    await page.type('#txtLastName', jsonData.lastName);
+    await page.type('#txtAddr1', jsonData.addressLine1);
+    await page.type('#txtAddr2', jsonData.addressLine2);
+    await page.type('#txtCity', jsonData.city);
+
+    // Handle the postal code popup
+    await page.keyboard.press('Tab'); // Trigger postal code popup
+    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
+    await page.evaluate(() => {
+      const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
+      if (postalCodeItems.length > 0) {
+        postalCodeItems[0].click();
+      }
+    });
+    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
+
+    // Ensure postal code is filled
+    await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
+
+    // Fill phone and email
+    await page.type('#txtPhone', jsonData.phone);
+    await page.type('#txtEmail', jsonData.email);
+
+    // Check consent checkbox
+    await page.click('#chkRAConsent');
+
+    // Click the first "Continue" button
+    await page.click('#ContinueButton');
+    console.log("Continue clicked once");
+
+    // Handle error message
+    await page.click('#ContinueButton');
+    const errorMessage = await page.evaluate(() => document.querySelector('#lblErrorMessage')?.innerText);
+    
+    if (errorMessage) {
+      console.log("Error detected:", errorMessage);
+      await page.click('#ContinueButton');
+    }
+    // Wait for the next form to appear
+    await page.waitForSelector('#slctCountry', { visible: true, timeout: 180000 });
+
+    // Fill in additional details
+    await page.select('#slctCountry', 'USA');
+    await page.type('#txtAddr1', '123 Main St');
+    await page.type('#txtAddr2', 'Suite 100');
+    await page.type('#txtAddr3', 'Building 5');
+    await page.type('#txtCity', 'Anytown');
+    await page.type('#txtState', 'CA');
+    await page.type('#txtPostal', '12345');
+    await page.type('#txtPhone', '1234567890');
+    await page.type('#txtFAX', '0987654321');
+    await page.type('#txtEmail', 'example@example.com');
+
+    // Fill in mailing address
+    await page.select('#slctCountryMail', 'USA');
+    await page.type('#txtAddr1Mail', '456 Elm St');
+    await page.type('#txtAddr2Mail', 'Apt 2B');
+    await page.type('#txtAddr3Mail', 'Floor 3');
+    await page.type('#txtCityMail', 'Othertown');
+    await page.type('#txtStateMail', 'NY');
+    await page.type('#txtPostalMail', '67890');
+
+    // Submit the form
+    await page.click('#ContinueButton');
+    console.log('Form automation completed');
+  } catch (error) {
+    console.error('An error occurred:', error);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
+})();
 
-  // Optional: Wait for user input before closing
-  await new Promise(resolve => {
-    const readline = require('readline').createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-    readline.question('Press Enter to close the browser...', () => {
-      readline.close();
-      resolve();
-    });
-  });
-
-  // Close the browser
-  await browser.close();
+async function randomSleep(min = 1000, max = 2000) {
+  const sleepTime = Math.floor(Math.random() * (max - min + 1)) + min;
+  await new Promise(resolve => setTimeout(resolve, sleepTime));
 }
-
-fillBusinessFormationForm().catch(console.error);
