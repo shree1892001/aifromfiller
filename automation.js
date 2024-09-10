@@ -2761,13 +2761,61 @@ businessDesignator.forEach(designator => {
           });
 
 
-          if(data.Payload.Principal_Address){
+          if(data.Payload.Incorporator_Information.Incorporator_Details){
 
-            await page.type('#BusinessAddressLine1', data.Payload.Principal_Address.PA_Address_Line1);
-            await page.type('#City', data.Payload.Principal_Address.PA_City);
-            await page.select('#State', data.Payload.Principal_Address.PA_State); // Select 'New York' from the dropdown
-            await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
-}
+            await page.waitForSelector('#add-member-btn',{visible: true, timeout: 120000 });
+            await page.click('#add-member-btn');
+            await page.waitForSelector('#member-add-modal', { visible: true,timeout : 120000 });
+            await page.type('#Name', data.Payload.Incorporator_Information.Incorporator_Details.Name);
+            await page.type('#StreetAddress1', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_Address_Line1);
+            await page.type('#StreetAddress2', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_Address_Line2);
+            await page.type('#City', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_City); 
+
+            await page.waitForSelector('#State',{visible: true, timeout: 120000 }); 
+
+
+            const statecheck= document.querySelector('#State')
+            const option = Array.from(statecheck.options).find(opt => opt.text === data.Payload.Incorporator_Information.Incorporator_Details.Address.State.toUpperCase());
+            if(option){
+                statecheck.value=option.value ;
+            }
+            await page.type('#Zip', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code);
+            await page.type('#ZipPlus', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code); 
+            page.on('dialog', async dialog => {
+              console.log(dialog.message());
+              await dialog.accept();
+            });
+            await page.click('input[type="submit"].btn-primary');
+            await page.waitForSelector('#member-add-modal', { hidden: true });
+            console.log('Modal closed.');
+
+            await page.waitForSelector('#table-body',{visible: true, timeout: 120000 });
+            const directAdd =await page.evaluate(()=>{
+
+              return Array.from(document.querySelectorAll('#table-body tr')).some(row =>
+                row.innerText.includes(data.Payload.Incorporator_Information.Incorporator_Details.Name) 
+              ); 
+            }); 
+
+            if(directAdd){
+              console.log('Director added successfully.');
+            }
+            else{
+
+              throw new Error('Failed to Add director');
+            }
+            await page.evaluate(() => {
+              const submitButton = document.querySelector('input.btn.btn-success');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          });
+          page.on('dialog', async dialog => {
+            console.log(dialog.message());
+            await dialog.accept(); // Automatically accept any further popups
+          });
+        }
 await page.evaluate(() => {
   const submitButton = document.querySelector('input.btn.btn-success');
   if (submitButton) {
@@ -2831,7 +2879,7 @@ await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
 busisnessType= document.querySelector('#Title');
 const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
 if(option){
-  dropdown.value=option.value ;
+   busisnessType.value=option.value ;
 }
 
 const isErrorVisible = await page.evaluate(() => {
@@ -3200,7 +3248,7 @@ await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
 busisnessType= document.querySelector('#Title');
 const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
 if(option){
-  dropdown.value=option.value ;
+  busisnessType.value=option.value ;
 }
 
 const isErrorVisible = await page.evaluate(() => {
