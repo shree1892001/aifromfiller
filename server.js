@@ -34,26 +34,6 @@ const log = (message) => {
     const timestamp = new Date().toISOString();
     logStream.write(`[${timestamp}] ${message}\n`);
 };
-const wss = new websock.Server({ port: 8080 });
-
-let wsClient;
-
-wss.on('connection', (ws) => {
-    console.log('Client connected');
-    wsClient = ws;
-
-    ws.on('close', () => {
-        console.log('Client disconnected');
-        wsClient = null;
-    });
-});
-
-function sendWebSocketMessage(message) {
-    if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-        wsClient.send(JSON.stringify({ message }));
-    }
-}
-let clients = [];
 
 
 
@@ -98,7 +78,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
         await retry(async () => {
             try {
-                sendWebSocketMessage('Navigating to the login page...');
+                // sendWebSocketMessage('Navigating to the login page...');
                 console.log("Navigating to the login page...");
                 const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                     waitUntil: 'networkidle0',

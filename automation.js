@@ -142,22 +142,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
         await randomSleep(3000, 5000);
 
-        if (!secondLinkUrl) {
-            throw new Error("The required bussiness type can.");
-        }
-
-        console.log("Opening the Articles of Organization...");
-        try {
-            await page.goto(new URL(secondLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
-        } catch (error) {
-            console.error("Error navigating to the Articles of Organization page:", error.message);
-            throw new Error("Failed to navigate to the Articles of Organization page.");
-        }
-
-        console.log("Articles of Organization page loaded.");
-        await randomSleep(3000, 5000);
-
-        let entityType = jsonData.EntityType.orderShortName.trim().toUpperCase();
+ let entityType = jsonData.EntityType.orderShortName.trim().toUpperCase();
         if (entityType === 'LLC') {
             await addDataLLC(page, jsonData);
         } else if (entityType === 'CORP') {
@@ -2000,6 +1985,7 @@ async function performLogin(page, jsonData) {
 
 
 async function addDataLLC(page, data) {
+  if(jsonData.State.stateFullDesc=="New-York"){
     try {
         console.log("Attempting to add the name");
 
@@ -2038,11 +2024,7 @@ async function addDataLLC(page, data) {
 
         const isDuplicate =await page.evaluate(()=>{
 
-            const table=document.querySelector('table[id$="_orig"');
-            if(table){
-                const r=table.querySelectorAll('tbody tr'); 
-                return r.length > 0;
-              }
+          
 
             return false; 
         }); 
@@ -2136,151 +2118,330 @@ async function addDataLLC(page, data) {
         return errorResponse;
         // Re-throw the error if necessary
     }
+
+  }
+  else if(jsonData.State.stateFullDesc=="New-Jersey"){
+             
+        try {
+          console.log("Attempting to add the name");
+  
+          // Wait for the form to be available
+          await page.waitForSelector('form', { visible: true, timeout: 120000 });
+  
+          // Fill out the form and submit
+          await page.evaluate((data) => {
+              const nameField = document.querySelector('input[name="BussinessName"]');
+              const submitButton = document.querySelector('input.btn.btn-success');
+  
+              if (!nameField || !submitButton) {
+                  throw new Error("Couldn't find name field or submit button");
+              }
+  
+              // Set the name and checkbox values
+              let legalName = data.Payload.Name.CD_Legal_Name; 
+              nameField.value = legalName;
+             
+  
+              // Trigger form submission
+              submitButton.click();
+          }, data);
+  
+          try {
+              // Wait for navigation after form submission
+              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+          } catch (err) {
+              console.log("Page did not navigate, likely staying on the same page due to an error.");
+          }
+  
+          // Check if the error message about the unacceptable name appears
+          // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+  
+          const errorText = await page.evaluate(() => {
+            const errorMessage = document.querySelector('span.field-validation-error[data-valmsg-for="mystery"]');
+            return errorMessage ? errorMessage.innerText : '';
+        });
+        
+        // If the error message exists, throw an error with the message
+        if (errorText.includes("Business Name can not include business designators like 'LLC'")) {
+          throw new Error(`Error: ${errorText}`);
+      } else if (errorText) {
+          throw new Error(`Error encountered: ${errorText}`);
+      } else {
+          console.log("No error message found. Proceeding with the next steps.");
+      }
+          
+         
+  
+          console.log("Entity name is valid.");
+          // If the error message exists, throw an error
+         
+  
+          console.log("Name added successfully!");
+          await fillNextPage(page, data);
+  
+          return { success: true, message: "Name added successfully" };
+  
+  
+      } catch (e) {
+          // Specific error handling
+          let errorResponse = {
+              success: false,
+              error: e.message
+          };
+          if (e.message.includes('Execution context was destroyed')) {
+              errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+          } else if (e.message.includes('Name is Invalid')) {
+              errorResponse.error = e.message;
+          } else if (e.message.startsWith('DuplicateEntityError:')) {
+              errorResponse.error = "Duplicate entity found: " + e.message;
+              try {
+                  const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                  errorResponse.entityDetails = entityDetails;
+              } catch (parseError) {
+                  console.error("Failed to parse entity details:", parseError);
+              }
+          }
+  
+          console.error("An error occurred:", errorResponse.error);
+          return errorResponse;
+          // Re-throw the error if necessary
+      }
+
+       }
+      
+  
 }
 
 async function addDataCorp(page, data) {
-    try {
-        console.log("Attempting to add the name");
 
-        // Wait for the form to be available
-        await page.waitForSelector('form', { visible: true, timeout: 12000000 });
+  if(jsonData.State.stateFullDesc=="New-York"){
+  try {
+      console.log("Attempting to add the name");
 
-        // Fill out the form and submit
-        await page.evaluate((data) => {
-            const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
-            const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
-            const submitButton = document.querySelector('button.t-Button--hot');
+      // Wait for the form to be available
+      await page.waitForSelector('form', { visible: true, timeout: 12000000 });
 
-            if (!nameField || !submitButton) {
-                throw new Error("Couldn't find name field or submit button");
+      // Fill out the form and submit
+      await page.evaluate((data) => {
+          const nameField = document.querySelector('input[name="P2_ENTITY_NAME"]');
+          const checkbox = document.querySelector('input[name="P2_CHECKBOX"]');
+          const submitButton = document.querySelector('button.t-Button--hot');
+
+          if (!nameField || !submitButton) {
+              throw new Error("Couldn't find name field or submit button");
+          }
+
+          // Set the name and checkbox values
+          let legalName=data.Payload.Name.CD_Legal_Name;
+          nameField.value = legalName;
+          if (checkbox) {
+              checkbox.checked = data.checked;
+          }
+
+          // Trigger form submission
+          submitButton.click();
+      }, data);
+
+      try {
+          // Wait for navigation after form submission
+          await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
+      } catch (err) {
+          console.log("Page did not navigate, likely staying on the same page due to an error.");
+      }
+
+      // Check if the error message about the unacceptable name appears
+      // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+      const isDuplicate =await page.evaluate(()=>{
+
+          const table=document.querySelector('table[id$="_orig"');
+          if(table){
+              const r=table.querySelectorAll('tbody tr'); 
+              return r.length > 0;
             }
 
-            // Set the name and checkbox values
-            nameField.value = data.Payload.Name.CD_Legal_Name;
-            if (checkbox) {
-                checkbox.checked = data.checked;
-            }
+          return false; 
+      }); 
+      if (isDuplicate) {
+          await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
 
-            // Trigger form submission
-            submitButton.click();
-        }, data);
-
-        try {
-            // Wait for navigation after form submission
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
-        } catch (err) {
-            console.log("Page did not navigate, likely staying on the same page due to an error.");
-        }
-
-        // Check if the error message about the unacceptable name appears
-        // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
-
-        const isDuplicate =await page.evaluate(()=>{
-
-            const table=document.querySelector('table[id$="_orig"');
-            if(table){
-                const r=table.querySelectorAll('tbody tr'); 
-                return r.length > 0;
+          const entityDetails = await page.evaluate(() => {
+              const table = document.querySelector('table[id$="_orig"]');
+              if (!table) {
+                  console.error("Table not found");
+                  return null;
               }
+              console.log("Table found:", table);
+      
+              // Change: Select the second row (first data row) instead of the first row
+              const row = table.querySelectorAll('tbody tr')[1];
+              if (!row) {
+                  console.error("Row not found");
+                  return null;
+              }
+              console.log("Row found:", row);
+      
+              const cells = row.querySelectorAll('td');
+              if (cells.length < 4) {
+                  console.error("Not enough cells found");
+                  return null;
+              }
+              console.log("Cells found:", cells);
+      
+              return {
+                  name: cells[0].textContent.trim(),
+                  dosid: cells[1].textContent.trim(),
+                  formationDate: cells[2].textContent.trim(),
+                  county: cells[3].textContent.trim()
+              };
+          });
+      
+          if (!entityDetails) {
+              throw new Error("Failed to retrieve entity details from the table.");
+          }
+          throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
+      }
+      const nameInvalid = await page.evaluate(() => {
+          const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+          return errorMessage !== null;  // Returns true if any error message is present
+      });
 
-            return false; 
-        }); 
-        if (isDuplicate) {
-            await page.waitForSelector('table[id$="_orig"]', { timeout: 10000 });
+      if (nameInvalid) {
+          await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
 
-            const entityDetails = await page.evaluate(() => {
-                const table = document.querySelector('table[id$="_orig"]');
-                if (!table) {
-                    console.error("Table not found");
-                    return null;
-                }
-                console.log("Table found:", table);
-        
-                // Change: Select the second row (first data row) instead of the first row
-                const row = table.querySelectorAll('tbody tr')[1];
-                if (!row) {
-                    console.error("Row not found");
-                    return null;
-                }
-                console.log("Row found:", row);
-        
-                const cells = row.querySelectorAll('td');
-                if (cells.length < 4) {
-                    console.error("Not enough cells found");
-                    return null;
-                }
-                console.log("Cells found:", cells);
-        
-                return {
-                    name: cells[0].textContent.trim(),
-                    dosid: cells[1].textContent.trim(),
-                    formationDate: cells[2].textContent.trim(),
-                    county: cells[3].textContent.trim()
-                };
-            });
-        
-            if (!entityDetails) {
-                throw new Error("Failed to retrieve entity details from the table.");
-            }
-            throw new Error(`DuplicateEntityError: ${JSON.stringify(entityDetails)} exists. Enter a new entity name.`);
+          const errorText = await page.evaluate(() => {
+              const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
+              return errorMessage ? errorMessage.innerText : '';
+          });
+          throw new Error(`Corp Entity name "${data.Payload.Name.CD_Legal_Name}" is invalid it should end with Corporation or Corp. or Limited or Ltd. or  Incorporated or Inc.  Error: ${errorText}`);
+      }
+
+      console.log("Entity name is valid.");
+      // If the error message exists, throw an error
+     
+
+      console.log("Name added successfully!");
+      await fillNextPageCorp(page, data)
+
+      return { success: true, message: "Name added successfully" };
+
+
+  } catch (e) {
+      // Specific error handling
+      // Specific error handling
+      let errorResponse = {
+          success: false,
+          error: e.message
+      };
+      if (e.message.includes('Execution context was destroyed')) {
+          errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+      } else if (e.message.includes('Name is Invalid')) {
+          errorResponse.error = e.message;
+      } else if (e.message.startsWith('DuplicateEntityError:')) {
+          errorResponse.error = "Duplicate entity found: " + e.message;
+          try {
+              const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+              errorResponse.entityDetails = entityDetails;
+          } catch (parseError) {
+              console.error("Failed to parse entity details:", parseError);
+          }
+      }
+
+      console.error("An error occurred:", errorResponse.error);
+      return errorResponse;
+      
+  }
+}else if(jsonData.State.stateFullDesc=="New-Jersey"){
+             
+  try {
+    console.log("Attempting to add the name");
+
+    // Wait for the form to be available
+    await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+    // Fill out the form and submit
+    await page.evaluate((data) => {
+        const nameField = document.querySelector('input[name="BussinessName"]');
+        const submitButton = document.querySelector('input.btn.btn-success');
+
+        if (!nameField || !submitButton) {
+            throw new Error("Couldn't find name field or submit button");
         }
-        const nameInvalid = await page.evaluate(() => {
-            const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-            return errorMessage !== null;  // Returns true if any error message is present
-        });
 
-        if (nameInvalid) {
-            await page.waitForSelector('p[style="color:red;text-align:left"]', { timeout: 10000 });
-
-            const errorText = await page.evaluate(() => {
-                const errorMessage = document.querySelector('p[style="color:red;text-align:left"]');
-                return errorMessage ? errorMessage.innerText : '';
-            });
-            throw new Error(`Corp Entity name "${data.Payload.Name.CD_Legal_Name}" is invalid it should end with Corporation or Corp. or Limited or Ltd. or  Incorporated or Inc.  Error: ${errorText}`);
-        }
-
-        console.log("Entity name is valid.");
-        // If the error message exists, throw an error
+        // Set the name and checkbox values
+        nameField.value = data.Payload.Name.CD_Legal_Name;
        
 
-        console.log("Name added successfully!");
-        await fillNextPageCorp(page, data)
+        // Trigger form submission
+        submitButton.click();
+    }, data);
 
-        return { success: true, message: "Name added successfully" };
-
-
-    } catch (e) {
-        
-        let errorResponse = {
-            success: false,
-            error: e.message
-        };
-        if (e.message.includes('Execution context was destroyed')) {
-            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
-        } else if (e.message.includes('Name is Invalid')) {
-            errorResponse.error = e.message;
-        } else if (e.message.startsWith('DuplicateEntityError:')) {
-            errorResponse.error = "Duplicate entity found: " + e.message;
-            try {
-                const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
-                errorResponse.entityDetails = entityDetails;
-            } catch (parseError) {
-                console.error("Failed to parse entity details:", parseError);
-            }
-        }
-
-        console.error("An error occurred:", errorResponse.error);
-        return errorResponse;
-        
+    try {
+        // Wait for navigation after form submission
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+    } catch (err) {
+        console.log("Page did not navigate, likely staying on the same page due to an error.");
     }
+
+    // Check if the error message about the unacceptable name appears
+    // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+
+    const errorText = await page.evaluate(() => {
+      const errorMessage = document.querySelector('span.field-validation-error[data-valmsg-for="mystery"]');
+      return errorMessage ? errorMessage.innerText : '';
+  });
+  
+  // If the error message exists, throw an error with the message
+  if (errorText.includes("Business Name can not include business designators like 'LLC'")) {
+    throw new Error(`Error: ${errorText}`);
+} else if (errorText) {
+    throw new Error(`Error encountered: ${errorText}`);
+} else {
+    console.log("No error message found. Proceeding with the next steps.");
+}
+    
+   
+
+    console.log("Entity name is valid.");
+   
+
+    console.log("Name added successfully!");
+    await fillNextPageCorp(page, data);
+
+    return { success: true, message: "Name added successfully" };
+
+
+} catch (e) {
+    // Specific error handling
+    let errorResponse = {
+        success: false,
+        error: e.message
+    };
+    if (e.message.includes('Execution context was destroyed')) {
+        errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+    } else if (e.message.includes('Name is Invalid')) {
+        errorResponse.error = e.message;
+    } else if (e.message.startsWith('DuplicateEntityError:')) {
+        errorResponse.error = "Duplicate entity found: " + e.message;
+        try {
+            const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+            errorResponse.entityDetails = entityDetails;
+        } catch (parseError) {
+            console.error("Failed to parse entity details:", parseError);
+        }
+    }
+
+    console.error("An error occurred:", errorResponse.error);
+    return errorResponse;
+    // Re-throw the error if necessary
+}
+
+ }
 }
 
 
-
-
-
-
 async function fillNextPageCorp(page, data) {
+  if(jsonData.State.stateFullDesc=="New-York"){
     try {
         console.log("Filling the next page...");
 
@@ -2516,10 +2677,223 @@ if (clickedButton === 'ServiceCompany') {
                         submitButton.click();
                     }
                 });
+
+              }else if(jsonData.State.stateFullDesc=="New-Jersey"){
+                const designators = ['CORPORATION', 'INCORPORATED' ,'COMPANY', 'LTD', 'CO', 'CO.', 'CORP', 'CORP.', 'INC', 'INC.'];
+            const upperCaseName = legalName.toUpperCase();
+            console.log("the company name is :=",upperCaseName); 
+
+                const businessDesignator=designators.filter(designator => upperCaseName.includes(designator));
+
+                   let nameWithoutDesignator = upperCaseName;
+businessDesignator.forEach(designator => {
+    nameWithoutDesignator = nameWithoutDesignator.replace(designator, '').trim();
+});
+                await page.waitForSelector('#BusinessNameDesignator');
+
+                await page.select('#BusinessNameDesignator', businessDesignator);
+
+
+
+                await page.evaluate(() => {
+                  const submitButton = document.querySelector('input.btn.btn-success');
+                  if (submitButton) {
+
+                      submitButton.click();
+                  }
+              });
+              if(data.Payload.FeinInformation.FeinNumber){
+              await page.type('#FeinNumber', data.Payload.FeinInformation.FeinNumber); 
+              }
+              if(data.Payload.FeinInformation.FeinLocation){
+              await page.type('#FeinLocation', data.Payload.FeinInformation.FeinLocation);               
+            } 
+              if(data.Payload.FeinInformation.NaicsCode){
+              await page.type('#NaicsCode', '123456'); 
+              }
+
+              if(data.Payload.Duration.duration)
+              await page.type('#Duration',data.Payload.Duration.duration); 
+          
+              // Set the Effective Date
+
+              if(data.Payload.EffectiveDate.effectivedate){
+              await page.click('#effective-date-picker'); // Click on the date picker input
+              await page.evaluate(() => {
+                  document.querySelector('#effective-date-picker').value = data.Payload.EffectiveDate.effectivedate;// Set the desired date
+              });
+            }
+            if(data.Payload.Stock_Information.SI_No_Of_Shares){
+              let shares=data.Payload.Stock_Information.SI_No_Of_Shares; 
+              if (isNaN(shares) || parseInt(shares) <= 0 || shares.length > 11) {
+                console.log("Invalid number for total shares. Please enter a positive number with a maximum of 11 digits.");
+              } 
+
+              await page.waitForSelector('#TotalShares',{visible: true, timeout: 120000 })
+              await page.type('#TotalShares',data.Payload.Stock_Information.SI_No_Of_Shares); 
+
+              const errorMessage = await page.$eval('.help-inline.nod_msg', el => el.innerText);
+
+              if (errorMessage === 'The maximum number of shares allowed is 1,000,000') {
+      // console.log("Validation Error: The maximum number of shares allowed is 1,000,000.");
+                throw new Error("Validation Error: The maximum number of shares allowed is 1,000,000."); 
+    } else {
+      console.log("Total shares input successfully. No validation errors found.");
+    }
+
+
+            }
+            await page.evaluate(() => {
+              const submitButton = document.querySelector('input.btn.btn-success');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          });
+
+            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose);
+            await page.evaluate(() => {
+              const submitButton = document.querySelector('input.btn.btn-success');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          });
+
+
+          if(data.Payload.Principal_Address){
+
+            await page.type('#BusinessAddressLine1', data.Payload.Principal_Address.PA_Address_Line1);
+            await page.type('#City', data.Payload.Principal_Address.PA_City);
+            await page.select('#State', data.Payload.Principal_Address.PA_State); // Select 'New York' from the dropdown
+            await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
+}
+await page.evaluate(() => {
+  const submitButton = document.querySelector('input.btn.btn-success');
+  if (submitButton) {
+
+      submitButton.click();
+  }
+});
+
+if(data.Payload.Registered_Agent){
+        
+  await page.click('#ra-num-link a');
+  await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
+
+  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.Name.RA_Name);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.Name.Email);
+  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.Address.RA_Address_Line1);
+  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.Address.RA_Address_Line2);
+  await page.type('#OfficeCity', data.Payload.Registered_Agent.Address.RA_City)
+  await page.type('#OfficeZip', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+
+
+
+  await page.click('#Attested');
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+       
+
+}
+if(data.Payload.Members){
+
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+}
+
+await page.evaluate(() => {
+  const submitButton = document.querySelector('input.btn.btn-success');
+  if (submitButton) {
+
+      submitButton.click();
+  }
+});
+
+await page.waitForSelector('#add-signer-btn', { visible: true, timeout: 30000 });
+await page.click('#add-signer-btn');
+
+await page.waitForSelector('#signer-modal', { visible: true ,timeout: 30000 });
+await page.type('#Name',data.Payload.Organizer_Information.Organizer_Details.Org_Name );
+await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
+
+busisnessType= document.querySelector('#Title');
+const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
+if(option){
+  dropdown.value=option.value ;
+}
+
+const isErrorVisible = await page.evaluate(() => {
+  const errorMessageElement = document.querySelector('#modal-error-msg');
+  return errorMessageElement && !errorMessageElement.classList.contains('hidden');
+});
+
+if (isErrorVisible) {
+  const errorMessage = await page.$eval('#error-text', el => el.innerText.trim());
+  console.log('Error in form:', errorMessage);
+} else {
+  await page.waitForSelector('#modal-save-btn',{ visible: true, timeout: 30000 }); 
+
+  
+  await page.click('#modal-save-btn');
+}
+  await page.waitForSelector('#signer-modal', { hidden: true }).catch(async () => {
+      console.log('Modal did not close automatically, closing manually.');
+      await page.click('#modal-close-btn'); 
+  });
+    
+  const signerExists = await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('#table-body tr'));
+    return rows.some(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
+});
+
+if (signerExists) {
+    console.log('New signer is successfully added to the table.');
+
+    await page.evaluate(() => {
+        const row = Array.from(document.querySelectorAll('#table-body tr'))
+            .find(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
+        if (row) {
+            const checkbox = row.querySelector('input[type="checkbox"]'); 
+            if (checkbox && !checkbox.checked) {
+                checkbox.click(); 
+            }
+        }
+    });
+
+    console.log('Checkbox for the new signer is checked.');
+
+  }
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+
+
+
+
+
+              }
 }
 
 
 async function fillNextPage(page, data) {
+  if(jsonData.State.stateFullDesc=="New-York"){
+
     try {
         console.log("Filling the next page...");
 
@@ -2682,7 +3056,210 @@ async function fillNextPage(page, data) {
                         submitButton.click();
                     }
                 });
+
+
+              }else if(jsonData.State.stateFullDesc=="New-Jersey"){
+                const designators = [
+                  'LLC',
+                  'L.L.C.',
+                  'L.L.C',
+                  'LTD LIABILITY CO',
+                  'LTD LIABILITY CO.',
+                  'LTD LIABILITY COMPANY',
+                  'LIMITED LIABILITY CO',
+                  'LIMITED LIABILITY CO.',
+                  'LIMITED LIABILITY COMPANY'
+              ];
+            const upperCaseName = legalName.toUpperCase();
+            console.log("the company name is :=",upperCaseName); 
+
+                const businessDesignator=designators.filter(designator => upperCaseName.includes(designator));
+                let nameWithoutDesignator = upperCaseName;
+businessDesignator.forEach(designator => {
+    nameWithoutDesignator = nameWithoutDesignator.replace(designator, '').trim();
+});
+
+                await page.waitForSelector('#BusinessNameDesignator');
+                await page.select('#BusinessNameDesignator', businessDesignator);
+
+
+
+                await page.evaluate(() => {
+                  const submitButton = document.querySelector('input.btn.btn-success');
+                  if (submitButton) {
+
+                      submitButton.click();
+                  }
+              });
+              if(data.Payload.FeinInformation.FeinNumber){
+              await page.type('#FeinNumber', data.Payload.FeinInformation.FeinNumber); 
+              }
+              if(data.Payload.FeinInformation.FeinLocation){
+              await page.type('#FeinLocation', data.Payload.FeinInformation.FeinLocation);               
+            } 
+              if(data.Payload.FeinInformation.NaicsCode){
+              await page.type('#NaicsCode', '123456'); 
+              }
+
+              if(data.Payload.Duration.duration)
+              await page.type('#Duration',data.Payload.Duration.duration); 
+          
+              // Set the Effective Date
+
+              if(data.Payload.EffectiveDate.effectivedate){
+              await page.click('#effective-date-picker'); // Click on the date picker input
+              await page.evaluate(() => {
+                  document.querySelector('#effective-date-picker').value = data.Payload.EffectiveDate.effectivedate;// Set the desired date
+              });
+            }
+            await page.evaluate(() => {
+              const submitButton = document.querySelector('input.btn.btn-success');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          });
+
+            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose);
+            await page.evaluate(() => {
+              const submitButton = document.querySelector('input.btn.btn-success');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          });
+
+
+          if(data.Payload.Principal_Address){
+
+            await page.type('#BusinessAddressLine1', data.Payload.Principal_Address.PA_Address_Line1);
+            await page.type('#City', data.Payload.Principal_Address.PA_City);
+            await page.select('#State', data.Payload.Principal_Address.PA_State); // Select 'New York' from the dropdown
+            await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
 }
+await page.evaluate(() => {
+  const submitButton = document.querySelector('input.btn.btn-success');
+  if (submitButton) {
+
+      submitButton.click();
+  }
+});
+
+if(data.Payload.Registered_Agent){
+        
+  await page.click('#ra-num-link a');
+  await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
+
+  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.Name.RA_Name);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.Name.Email);
+  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.Address.RA_Address_Line1);
+  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.Address.RA_Address_Line2);
+  await page.type('#OfficeCity', data.Payload.Registered_Agent.Address.RA_City)
+  await page.type('#OfficeZip', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+
+
+
+  await page.click('#Attested');
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+       
+
+}
+if(data.Payload.Members){
+
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+}
+
+await page.evaluate(() => {
+  const submitButton = document.querySelector('input.btn.btn-success');
+  if (submitButton) {
+
+      submitButton.click();
+  }
+});
+
+await page.waitForSelector('#add-signer-btn', { visible: true, timeout: 30000 });
+await page.click('#add-signer-btn');
+
+await page.waitForSelector('#signer-modal', { visible: true ,timeout: 30000 });
+await page.type('#Name',data.Payload.Organizer_Information.Organizer_Details.Org_Name );
+await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
+
+busisnessType= document.querySelector('#Title');
+const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
+if(option){
+  dropdown.value=option.value ;
+}
+
+const isErrorVisible = await page.evaluate(() => {
+  const errorMessageElement = document.querySelector('#modal-error-msg');
+  return errorMessageElement && !errorMessageElement.classList.contains('hidden');
+});
+
+if (isErrorVisible) {
+  const errorMessage = await page.$eval('#error-text', el => el.innerText.trim());
+  console.log('Error in form:', errorMessage);
+} else {
+  await page.waitForSelector('#modal-save-btn',{ visible: true, timeout: 30000 }); 
+
+  
+  await page.click('#modal-save-btn');
+}
+  await page.waitForSelector('#signer-modal', { hidden: true }).catch(async () => {
+      console.log('Modal did not close automatically, closing manually.');
+      await page.click('#modal-close-btn'); 
+  });
+    
+  const signerExists = await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('#table-body tr'));
+    return rows.some(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
+});
+
+if (signerExists) {
+    console.log('New signer is successfully added to the table.');
+
+    await page.evaluate(() => {
+        const row = Array.from(document.querySelectorAll('#table-body tr'))
+            .find(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
+        if (row) {
+            const checkbox = row.querySelector('input[type="checkbox"]'); 
+            if (checkbox && !checkbox.checked) {
+                checkbox.click(); 
+            }
+        }
+    });
+
+    console.log('Checkbox for the new signer is checked.');
+
+  }
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('input.btn.btn-success');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
+
+
+
+
+
+              }
+
+}
+
 
 function isNetworkError(error) {
     return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET','ERR_CONNECTION_RESET','ERR_CONNECTION_REFUSED'].includes(error.code);
@@ -2722,3 +3299,14 @@ async function adjustViewport(page) {
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
+
+
+
+
+
+
+
+
+
+
+
