@@ -8,6 +8,7 @@ const websock = require('ws');
 const cors = require('cors');
 
 const path = require('path');
+const { timeout } = require('puppeteer');
 
 
 
@@ -93,6 +94,11 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         else if(jsonData.State.stateFullDesc=="New-Jersey"){
 
           await handleNJ(page,jsonData);
+
+      }
+      else if(jsonData.State.stateFullDesc=='Delaware'){
+        await handleDw(page,jsonData);
+
 
       }
       async function handleNJ(page,jsonData){
@@ -1754,8 +1760,16 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
            return errorResponse;
         }
           }
+
+
+
+            
+          }
         async function handleNy(page,jsonData){
+        if(jsonData.State.stateFullDesc=="New-York"){
         await retry(async () => {
+
+          
             try {
                 // sendWebSocketMessage('Navigating to the login page...');
                 console.log("Navigating to the login page...");
@@ -1880,7 +1894,175 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         await randomSleep(10000000, 2200000000);
     }
 
-    } 
+    else if(jsonData.State.stateFullDesc=="Delaware"){
+
+      await retry(async () => {
+
+          
+        try {
+            // sendWebSocketMessage('Navigating to the login page...');
+            console.log("Navigating to the login page...");
+            // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+            const response = await page.goto(jsonData.State.stateUrl, {
+
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
+            log('Login page loaded.');
+        } catch (error) {
+            console.error("Error navigating to the login page:", error.message);
+            throw new Error("Navigation to the login page failed.");
+        }
+    },5,page);
+
+    await randomSleep(3000, 5000);
+        try {
+            await performLogin(page, jsonData);
+        } catch (error) {
+            console.error("Error waiting for the preview page:", error.message);
+            throw new Error("Invalid Login Credentials");
+        }
+        await adjustViewport(page);
+
+        console.log ('Waiting for options to appear'); 
+        await page.waitForSelector('.service-item  a', { visible: true}); 
+           try {
+            // Use page.evaluate to click the link in the context of the page
+            await page.evaluate(() => {
+              const firstLink = document.querySelector('.service-item  a');
+              if (firstLink) {
+                firstLink.scrollIntoView(); // Ensure the link is in view
+                firstLink.click();
+              } else {
+                throw new Error('No links found on the page');
+              }
+            });
+            console.log('Clicked the first link');
+            
+            // Optionally, wait for navigation or additional actions
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+            console.log('Redirected to the first link\'s destination');
+          } catch (error) {
+            console.error('Error during link click operation:', error.message);
+          }
+
+          await  page.waitForSelector('form-group',{ visible: true, timeout: 60000 }); 
+          async function selectOptionByText(selector, optionText) {
+            await page.evaluate((selector, optionText) => {
+              const select = document.querySelector(selector);
+              const option = Array.from(select.options).find(opt => opt.text.trim() === optionText);
+              if (option) {
+                select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }, selector, optionText);
+          }
+          await selectOptionByText('select[formcontrolname="workFlowPriority"]', 'Priority 7 (Normal Processing)');
+
+          await page.waitForSelector('kendo-maskedtextbox[formcontrolname="phoneNumber"] input.k-textbox',{visible:true, timeout:10000});
+          await page.focus('kendo-maskedtextbox[formcontrolname="phoneNumber"] input.k-textbox');
+          await page.evaluate((phoneNumber) => {
+            const input = document.querySelector('kendo-maskedtextbox[formcontrolname="phoneNumber"] input.k-textbox');
+            if (input) {
+              input.value = phoneNumber;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }, data.phoneNumber);
+      
+          const phoneNumber = await page.$eval('kendo-maskedtextbox[formcontrolname="phoneNumber"] input.k-textbox', el => el.value);
+          console.log('Entered phone number:', phoneNumber);
+          const options = await page.evaluate(() => {
+            const selectElement = document.querySelector('select[formcontrolname="documentUploadRequestType"]');
+            return Array.from(selectElement.options).map(option => ({
+              text: option.text,
+              value: option.value
+            }));
+          });
+          const optionToSelect = options.find(option => option.text === data.BusinessType);
+          if (optionToSelect) {
+            await page.select('select[formcontrolname="documentUploadRequestType"]', optionToSelect.value);
+          }
+          await page.waitForSelector('div.k-button.k-upload-button',{visible:true, timeout:10000});
+          await page.click('div.k-button.k-upload-button');
+          await randomSleep(100000,2000000);
+          const filePath = path.resolve(__dirname, 'path-to-your-file.txt');
+
+          await page.setInputFiles('input[type="file"]', filePath);
+          
+          await new Promise(resolve => setTimeout(resolve, 50000));
+
+
+
+          await page.waitForSelector('input[formcontrolname="corporationName"]');
+          await page.waitForSelector('input[formcontrolname="corporationNumber"]');
+          await page.waitForSelector('input[formcontrolname="reservationNumber"]');
+          await page.waitForSelector('input[formcontrolname="documentType"]');
+
+          await page.evaluate((data) => {
+            document.querySelector('input[formcontrolname="corporationName"]').value = data.Payload.Name.CD_Legal_Name;
+
+            if(data.Payload.Name.CD_Corporate_Number){
+            document.querySelector('input[formcontrolname="corporationNumber"]').value = data.Payload.Name.CD_Corporate_Number;
+
+            }
+            if(data.Payload.Name.CD_Reserve_Number){
+            document.querySelector('input[formcontrolname="reservationNumber"]').value = data.Payload.Name.CD_Reserve_Number;
+
+            }
+
+            if(data.EntityType.orderShortName){
+            document.querySelector('input[formcontrolname="documentType"]').value = data.EntityType.orderShortName;
+            }
+            // Optionally, trigger any event listeners if required
+            const event = new Event('input', { bubbles: true });
+            document.querySelector('input[formcontrolname="corporationName"]').dispatchEvent(event);
+            document.querySelector('input[formcontrolname="corporationNumber"]').dispatchEvent(event);
+            document.querySelector('input[formcontrolname="reservationNumber"]').dispatchEvent(event);
+            document.querySelector('input[formcontrolname="documentType"]').dispatchEvent(event);
+          },data);
+          const returnOptions= await page.evaluate(() => {
+            const selectElement = document.querySelector('select[formcontrolname="returnMethod"]');
+            return Array.from(selectElement.returnOptions).map(option => ({
+              text: option.text,
+              value: option.value
+            }));
+          });
+          const returnoptionselect= returnOptions.find(option => option.text === data.Payload.Return_Type);
+          if (returnoptionselect) {
+            await page.select('select[formcontrolname="returnMethod"]', returnoptionselect.value);
+          }
+          await page.waitForSelector('button.btn.btn-primary.btn-lg');
+
+    await page.click('button.btn.btn-primary.btn-lg');
+
+
+      
+
+
+
+
+      
+
+
+
+
+
+
+
+
+
+
+      
+     
+
+
+
+
+
+    }
+  }
+  
     
     
 
@@ -1922,6 +2104,8 @@ async function randomSleep(min = 1000, max = 2000) {
 }
 
 async function performLogin(page, jsonData) {
+
+   if(jsonData.State.stateFullDesc=="New-York"){
     try {
         console.log("Attempting to login...");
 
@@ -1978,9 +2162,75 @@ async function performLogin(page, jsonData) {
         console.error("Login failed:", error.message);
         throw error; // Re-throw the error for higher-level handling
     }
+
+  }else if(jsonData.State.stateFullDesc=="Delaware"){
+
+    try {
+      console.log("Attempting to login...");
+
+      // Wait for the form to be visible
+      await page.waitForSelector('a[routerlink="/account/login"]', { visible: true, timeout: 60000 });
+
+      const loginButton = await page.$('a[routerlink="/account/login"]');
+      if (loginButton) {
+        await loginButton.click();
+        console.log('Clicked login link');
+        
+        // Wait for navigation to the login page
+        await page.waitForNavigation({ waitUntil: 'networkidle0' });
+        console.log('Redirected to login page');
+      } else {
+        throw new Error('Login button not found');
+      }
+      await page.waitForSelector('input[formcontrolname="userName"]', { visible: true });
+    await page.waitForSelector('input[formcontrolname="password"]', { visible: true });
+
+      // Fill in the login form and handle the submit
+      await page.evaluate((jsonData) => {
+        const usernameField = document.querySelector('input[formcontrolname="userName"]');
+        const passwordField = document.querySelector('input[formcontrolname="password"]');
+        const submitButton = document.querySelector('button[type="submit"]');
+    
+        if (!usernameField || !passwordField || !submitButton) {
+          throw new Error("Couldn't find login elements");
+        }
+    
+        // Set the username and password
+        usernameField.value = jsonData.State.filingWebsiteUsername;
+        passwordField.value = jsonData.State.filingWebsitePassword;
+    
+        // Submit the form
+        submitButton.click();
+      }, jsonData);
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+      // Check for error messages after navigation
+      const alertSelector = 'ngb-alert';  
+  const errorMessage = 'You have entered an invalid user ID/ password';
+  
+  try {
+    const alertVisible = await page.evaluate((alertSelector, errorMessage) => {
+      const alert = document.querySelector(alertSelector);
+      return alert && alert.textContent.includes(errorMessage);
+    }, alertSelector, errorMessage);
+
+    if (alertVisible) {
+      console.error("Login failed: Invalid Login Credentials");
+      throw new Error("Login failed: Invalid Login Credentials");
+    }
+
+    console.log('Login successful.');
+
+  } catch (error) {
+      console.error("Login failed:", error.message);
+      throw error; // Re-throw the error for higher-level handling
+  }
+}catch (error) {
+  console.error("Login failed:", error.message);
+  throw error; // Re-throw the error for higher-level handling
 }
-
-
+  }
+}
 
 
 
