@@ -8,6 +8,7 @@ const cors = require('cors');
 
 const path = require('path');
 const { timeout } = require('puppeteer');
+const { evaluationString } = require('puppeteer');
 
 
 
@@ -132,9 +133,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 
             });
                 if(businessType){
-                  // const selectElement = document.querySelector('#BusinessType');
-                  // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
-                  // return option ? option.value : null;
+                 
                   await page.evaluate((value) => {
                     const select = document.querySelector('#BusinessType');
                     select.value = value;
@@ -154,9 +153,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             
         });
             if(businessType){
-              // const selectElement = document.querySelector('#BusinessType');
-              // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
-              // return option ? option.value : null;
+              
               await page.evaluate((value) => {
                 const select = document.querySelector('#BusinessType');
                 select.value = value;
@@ -2385,9 +2382,18 @@ async function addDataLLC(page, data) {
                   throw new Error("Couldn't find name field or submit button");
               }
   
-              // Set the name and checkbox values
               let legalName = data.Payload.Name.CD_Legal_Name; 
-              nameField.value = legalName.replace('LLC', ' ').trim()
+        const designators = [];
+            const upperCaseName = legalName.toUpperCase();
+            console.log("the company name is :=",upperCaseName); 
+
+                const businessDesignator=designators.filter(designator => upperCaseName.includes(designator));
+
+                   let nameWithoutDesignator = upperCaseName;
+businessDesignator.forEach(designator => {
+    nameWithoutDesignator = nameWithoutDesignator.replace(designator, '').trim();
+})
+        nameField.value = nameWithoutDesignator;
              
   
               // Trigger form submission
@@ -2486,19 +2492,16 @@ async function addDataCorp(page, data) {
               checkbox.checked = data.checked;
           }
 
-          // Trigger form submission
           submitButton.click();
       }, data);
 
       try {
-          // Wait for navigation after form submission
           await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 50000 });
       } catch (err) {
           console.log("Page did not navigate, likely staying on the same page due to an error.");
       }
 
-      // Check if the error message about the unacceptable name appears
-      // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+     
 
       const isDuplicate =await page.evaluate(()=>{
 
@@ -2565,7 +2568,6 @@ async function addDataCorp(page, data) {
       }
 
       console.log("Entity name is valid.");
-      // If the error message exists, throw an error
      
 
       console.log("Name added successfully!");
@@ -2575,8 +2577,7 @@ async function addDataCorp(page, data) {
 
 
   } catch (e) {
-      // Specific error handling
-      // Specific error handling
+      
       let errorResponse = {
           success: false,
           error: e.message
@@ -2604,10 +2605,7 @@ async function addDataCorp(page, data) {
   try {
     console.log("Attempting to add the name");
 
-    // Wait for the form to be available
-    await page.waitForSelector('form', { visible: true, timeout: 120000 });
-
-    // Fill out the form and submit
+  
     await page.evaluate((data) => {
         const nameField = document.querySelector('input[name="BussinessName"]');
         const submitButton = document.querySelector('input.btn.btn-success');
@@ -2615,9 +2613,23 @@ async function addDataCorp(page, data) {
         if (!nameField || !submitButton) {
             throw new Error("Couldn't find name field or submit button");
         }
+        
+        let legalName=data.Payload.Name.CD_Legal_Name; 
+        const designators = ['CORPORATION', 'INCORPORATED' ,'COMPANY', 'LTD', 'CO', 'CO.', 'CORP', 'CORP.', 'INC', 'INC.'];
+          
 
-        // Set the name and checkbox values
-        nameField.value = data.Payload.Name.CD_Legal_Name;
+            const upperCaseName = legalName.toUpperCase();
+            console.log("the company name is :=",upperCaseName); 
+
+                let businessDesignator=designators.filter(designator => upperCaseName.includes(designator));
+
+                   let nameWithoutDesignator = upperCaseName;
+businessDesignator.forEach(designator => {
+    nameWithoutDesignator = nameWithoutDesignator.replace(designator, '').trim();
+})
+        nameField.value = nameWithoutDesignator;
+
+        
        
 
         // Trigger form submission
@@ -2631,8 +2643,7 @@ async function addDataCorp(page, data) {
         console.log("Page did not navigate, likely staying on the same page due to an error.");
     }
 
-    // Check if the error message about the unacceptable name appears
-    // await page.waitForSelector('p[style="color:red;text-align:left"]', { visible: true, timeout: 120000 });
+    
 
     const errorText = await page.evaluate(() => {
       const errorMessage = document.querySelector('span.field-validation-error[data-valmsg-for="mystery"]');
@@ -2953,16 +2964,17 @@ businessDesignator.forEach(designator => {
               if(data.Payload.FeinInformation.FeinNumber){
               await page.type('#FeinNumber', data.Payload.FeinInformation.FeinNumber); 
               }
+              else{}
               if(data.Payload.FeinInformation.FeinLocation){
               await page.type('#FeinLocation', data.Payload.FeinInformation.FeinLocation);               
-            } 
+            }else{} 
               if(data.Payload.FeinInformation.NaicsCode){
               await page.type('#NaicsCode', '123456'); 
-              }
+              }else{}
 
-              if(data.Payload.Duration.duration)
+              if(data.Payload.Duration.duration){
               await page.type('#Duration',data.Payload.Duration.duration); 
-          
+              }else{}
               // Set the Effective Date
 
               if(data.Payload.EffectiveDate.effectivedate){
@@ -3001,7 +3013,7 @@ businessDesignator.forEach(designator => {
 
             await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
             await page.evaluate(() => {
-              const submitButton = document.querySelector('input.btn.btn-success');
+              const submitButton = document.querySelector('#btnSubmit');
               if (submitButton) {
 
                   submitButton.click();
@@ -3124,11 +3136,15 @@ await page.waitForSelector('#signer-modal', { visible: true ,timeout: 30000 });
 await page.type('#Name',data.Payload.Organizer_Information.Organizer_Details.Org_Name );
 await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
 
-busisnessType= document.querySelector('#Title');
-const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
-if(option){
-   busisnessType.value=option.value ;
-}
+
+await page.evaluate(() => {
+  const businessType = document.querySelector('#Title');
+  const option = Array.from(businessType.options).find(opt => opt.text === 'Authorized Representative');
+  if (option) {
+      businessType.value = option.value;
+      businessType.dispatchEvent(new Event('change', { bubbles: true }));  // Trigger the change event
+  }
+});
 
 const isErrorVisible = await page.evaluate(() => {
   const errorMessageElement = document.querySelector('#modal-error-msg');
@@ -3366,7 +3382,6 @@ async function fillNextPage(page, data) {
                   'LIMITED LIABILITY CO.',
                   'LIMITED LIABILITY COMPANY'
               ];
-            let upperCaseName = data.Payload.Name.CD_Legal_Name.toUpperCase().split(" ")[1];
             businessType = await page.evaluate(() => {
               const selectElement = document.querySelector('#BusinessNameDesignator');
       const option = Array.from(selectElement.options).find(opt => opt.text === 'LLC');
@@ -3425,11 +3440,11 @@ async function fillNextPage(page, data) {
                   submitButton.click();
               }
           });
-        //   await page.waitForSelector('#BusinessPurpose');
+          await page.waitForSelector('#BusinessPurpose');
 
-        //   await page.evaluate((businessPurpose) => {
-        //     document.querySelector('#BusinessPurpose').value = businessPurpose;
-        // }, data.Payload.Purpose.CD_Business_Purpose_Details);
+          await page.evaluate((businessPurpose) => {
+            document.querySelector('#BusinessPurpose').value = businessPurpose;
+        }, data.Payload.Purpose.CD_Business_Purpose_Details);
             await page.waitForSelector('#btnSubmit');
 
             await page.evaluate(() => {
@@ -3488,13 +3503,13 @@ if(data.Payload.Registered_Agent){
 
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
-  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.Name.RA_Name);
-  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.Name.Email);
-  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.Address.RA_Address_Line1);
-  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.Address.RA_Address_Line2);
-  await page.type('#OfficeCity', data.Payload.Registered_Agent.Address.RA_City)
-  await page.type('#OfficeZip', data.Payload.Registered_Agent.Address.RA_Postal_Code);
-  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email);
+  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
+  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
+  await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City)
+  await page.type('#OfficeZip', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
+  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
 
 
   await page.waitForSelector('#Attested'); 
