@@ -1,1 +1,3 @@
-Updating the code on high priority writing the code for Wyoming and Pesylvania asap on priority
+Updating the code on high priority writing the code for Wyoming and Pesylvania asap on priority  
+
+Add else in the for the opitonal fields and continue the automation
