@@ -19,7 +19,7 @@ const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if nee
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000','http://192.168.1.11:3000'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -51,10 +51,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     let browser;
 
     try {
-        // let jsonData = requestPayload.data;
-        let jsonData = requestPayload;
+        let jsonData = requestPayload.data;
+        // let jsonData = requestPayload;
 
-        // jsonData=JSON.parse(jsonData)
+        jsonData=JSON.parse(jsonData)
         console.log(jsonData)
 
         log('Data fetched from API successfully.');
@@ -78,19 +78,19 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         const page = await browser.newPage();
         await setupPage(page);
         await adjustViewport(page);
-        console.log(jsonData);
-        if(jsonData.State.stateFullDesc=="New-York"){
+        // console.log(jsonData);
+        if(jsonData.State.stateFullDesc === "New-York"){
             await handleNy(page,jsonData); 
         }
         else if(jsonData.State.stateFullDesc=="Florida"){
             await handleFL(page,jsonData); 
         }
-        else if(jsonData.State.stateFullDesc=="Wyoming"){
+        else if(jsonData.State.stateFullDesc=== "Wyoming"){
 
             await handleWy(page,jsonData);
 
         }
-        else if(jsonData.State.stateFullDesc=="New-Jersey"){
+        else if(jsonData.State.stateFullDesc === "New-Jersey"){
 
           await handleNJ(page,jsonData);
 
@@ -121,22 +121,48 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         await randomSleep(3000, 5000);
         await adjustViewport(page);
 
-        let busisnessType;
+        let businessType;
         if (jsonData.EntityType.orderShortName === 'LLC') {
             try {
-               busisnessType= document.querySelector('#BusinessType');
-              const secondLink =Array.from(busisnessType.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
-                    return secondLink ? secondLink : null;
+                   
+                   businessType = await page.evaluate(() => {
+                    const selectElement = document.querySelector('#BusinessType');
+            const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ Domestic Limited Liability Company (LLC)');
+            return option ? option.value : null;
                 
+            });
+                if(businessType){
+                  // const selectElement = document.querySelector('#BusinessType');
+                  // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
+                  // return option ? option.value : null;
+                  await page.evaluate((value) => {
+                    const select = document.querySelector('#BusinessType');
+                    select.value = value;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                }, businessType);
+                }
             } catch (error) {
                 console.error("Error getting the business type LLC:", error.message);
                 throw new Error("Failed to get the  LLC business type");
             }
         } else if (jsonData.EntityType.orderShortName === 'CORP') {
             try {
-                   busisnessType = document.querySelector('#BusinessType');
-                    const secondLink = Array.from(busisnessType.options).find(opt => opt.text === 'NJ Domestic For-Profit Corporation (DP)');
-                    return secondLink ? secondLink : null;
+              businessType = await page.evaluate(() => {
+                const selectElement = document.querySelector('#BusinessType');
+        const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ Domestic For-Profit Corporation (DP)');
+        return option ? option.value : null;
+            
+        });
+            if(businessType){
+              // const selectElement = document.querySelector('#BusinessType');
+              // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
+              // return option ? option.value : null;
+              await page.evaluate((value) => {
+                const select = document.querySelector('#BusinessType');
+                select.value = value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }, businessType);
+            }
                 
             } catch (error) {
                 console.error("Error getting the Corp business tyoe", error.message);
@@ -1036,8 +1062,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                 console.log("Navigating to the Landing page...");
 
                 const url = "https://efile.sunbiz.org/llc_file.html";
-                const baseUrl = url.split('/llc_file.html')[0];  // Split the URL till the base part
-                const appendedUrl = `${baseUrl}/llc_file.html`;
+                const baseUrl = url.split('/llc_file.html')[1];  // Split the URL till the base part
+                const appendedUrl = `${jsonData.State.stateUrl}/${baseUrl}`;
                 await page.goto(appendedUrl, {
                   waitUntil: 'networkidle0',
                   timeout: 60000
@@ -1743,7 +1769,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
           
             try {
-                // sendWebSocketMessage('Navigating to the login page...');
+                // sendWebSocketMessage('Attempting to add the name');
                 console.log("Navigating to the login page...");
                 // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
                 const response = await page.goto(jsonData.State.stateUrl, {
@@ -2207,7 +2233,7 @@ async function performLogin(page, jsonData) {
 
 
 async function addDataLLC(page, data) {
-  if(jsonData.State.stateFullDesc=="New-York"){
+  if(data.State.stateFullDesc=="New-York"){
     try {
         console.log("Attempting to add the name");
 
@@ -2342,7 +2368,7 @@ async function addDataLLC(page, data) {
     }
 
   }
-  else if(jsonData.State.stateFullDesc=="New-Jersey"){
+  else if(data.State.stateFullDesc=="New-Jersey"){
              
         try {
           console.log("Attempting to add the name");
@@ -2352,7 +2378,7 @@ async function addDataLLC(page, data) {
   
           // Fill out the form and submit
           await page.evaluate((data) => {
-              const nameField = document.querySelector('input[name="BussinessName"]');
+              const nameField = document.querySelector('input[name="BusinessName"]');
               const submitButton = document.querySelector('input.btn.btn-success');
   
               if (!nameField || !submitButton) {
@@ -2361,7 +2387,7 @@ async function addDataLLC(page, data) {
   
               // Set the name and checkbox values
               let legalName = data.Payload.Name.CD_Legal_Name; 
-              nameField.value = legalName;
+              nameField.value = legalName.replace('LLC', ' ').trim()
              
   
               // Trigger form submission
@@ -3162,7 +3188,7 @@ if (signerExists) {
 
 
 async function fillNextPage(page, data) {
-  if(jsonData.State.stateFullDesc=="New-York"){
+  if(data.State.stateFullDesc=="New-York"){
 
     try {
         console.log("Filling the next page...");
@@ -3328,7 +3354,7 @@ async function fillNextPage(page, data) {
                 });
 
 
-              }else if(jsonData.State.stateFullDesc=="New-Jersey"){
+              }else if(data.State.stateFullDesc=="New-Jersey"){
                 const designators = [
                   'LLC',
                   'L.L.C.',
@@ -3340,17 +3366,26 @@ async function fillNextPage(page, data) {
                   'LIMITED LIABILITY CO.',
                   'LIMITED LIABILITY COMPANY'
               ];
-            const upperCaseName = legalName.toUpperCase();
-            console.log("the company name is :=",upperCaseName); 
+            let upperCaseName = data.Payload.Name.CD_Legal_Name.toUpperCase().split(" ")[1];
+            businessType = await page.evaluate(() => {
+              const selectElement = document.querySelector('#BusinessNameDesignator');
+      const option = Array.from(selectElement.options).find(opt => opt.text === 'LLC');
+      return option ? option.value : null;
+          
+      });
+          if(businessType){
+            // const selectElement = document.querySelector('#BusinessType');
+            // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
+            // return option ? option.value : null;
+            await page.evaluate((value) => {
+              const select = document.querySelector('#BusinessNameDesignator');
+              select.value = value;
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+          }, businessType);
+          }
 
-                const businessDesignator=designators.filter(designator => upperCaseName.includes(designator));
-                let nameWithoutDesignator = upperCaseName;
-businessDesignator.forEach(designator => {
-    nameWithoutDesignator = nameWithoutDesignator.replace(designator, '').trim();
-});
-
-                await page.waitForSelector('#BusinessNameDesignator');
-                await page.select('#BusinessNameDesignator', businessDesignator);
+                // await page.waitForSelector('');
+                // await page.select('#BusinessNameDesignator', upperCaseName);
 
 
 
@@ -3361,27 +3396,28 @@ businessDesignator.forEach(designator => {
                       submitButton.click();
                   }
               });
-              if(data.Payload.FeinInformation.FeinNumber){
-              await page.type('#FeinNumber', data.Payload.FeinInformation.FeinNumber); 
-              }
-              if(data.Payload.FeinInformation.FeinLocation){
-              await page.type('#FeinLocation', data.Payload.FeinInformation.FeinLocation);               
-            } 
-              if(data.Payload.FeinInformation.NaicsCode){
-              await page.type('#NaicsCode', '123456'); 
-              }
+            //   if(data.Payload.FeinInformation.FeinNumber){
+            //   await page.type('#FeinNumber', data.Payload.FeinInformation.FeinNumber); 
+            //   }
+            //   if(data.Payload.FeinInformation.FeinLocation){
+            //   await page.type('#FeinLocation', data.Payload.FeinInformation.FeinLocation);               
+            // } 
+            //   if(data.Payload.FeinInformation.NaicsCode){
+            //   await page.type('#NaicsCode', '123456'); 
+            //   }
 
-              if(data.Payload.Duration.duration)
-              await page.type('#Duration',data.Payload.Duration.duration); 
+            //   if(data.Payload.Duration.duration)
+            //   await page.type('#Duration',data.Payload.Duration.duration); 
           
-              // Set the Effective Date
+            //   // Set the Effective Date
 
-              if(data.Payload.EffectiveDate.effectivedate){
-              await page.click('#effective-date-picker'); // Click on the date picker input
-              await page.evaluate(() => {
-                  document.querySelector('#effective-date-picker').value = data.Payload.EffectiveDate.effectivedate;// Set the desired date
-              });
-            }
+            //   if(data.Payload.EffectiveDate.effectivedate){
+            //   await page.click('#effective-date-picker'); // Click on the date picker input
+            //   await page.evaluate(() => {
+            //       document.querySelector('#effective-date-picker').value = data.Payload.EffectiveDate.effectivedate;// Set the desired date
+            //   });
+            // }
+            await page.waitForSelector('input.btn.btn-success')
             await page.evaluate(() => {
               const submitButton = document.querySelector('input.btn.btn-success');
               if (submitButton) {
@@ -3389,24 +3425,52 @@ businessDesignator.forEach(designator => {
                   submitButton.click();
               }
           });
+        //   await page.waitForSelector('#BusinessPurpose');
 
-            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
+        //   await page.evaluate((businessPurpose) => {
+        //     document.querySelector('#BusinessPurpose').value = businessPurpose;
+        // }, data.Payload.Purpose.CD_Business_Purpose_Details);
+            await page.waitForSelector('#btnSubmit');
+
             await page.evaluate(() => {
-              const submitButton = document.querySelector('input.btn.btn-success');
+              const submitButton = document.querySelector("#btnSubmit");
               if (submitButton) {
 
                   submitButton.click();
               }
           });
 
+      //     await page.waitForSelector('#BusinessAddressLine1');
+      //     if(data.Payload.Principal_Address){
 
-          if(data.Payload.Principal_Address){
+      //       await page.type('#BusinessAddressLine1', data.Payload.Principal_Address.PA_Address_Line1);
+      //       await page.type('#City', data.Payload.Principal_Address.PA_City);
+      //       // await page.select('#State', data.Payload.Principal_Address.PA_State); // Select 'New York' from the dropdown
+      //       await page.waitForSelector('#State');
+      // //       businessType = await page.evaluate((data) => {
+      // //         const selectElement = document.querySelector('#State');
+      // // const option = Array.from(selectElement.options).find(opt => opt.text === data.Payload.Principal_Address.PA_State);
+      // // return option ? option.value : null;
+          
+      // // },data);
+      //     if(businessType){
+      //       // const selectElement = document.querySelector('#BusinessType');
+      //       // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
+      //       // return option ? option.value : null;
+      //       await page.evaluate((value) => {
+      //         const select = document.querySelector('#State');
+      //         select.value = value;
+      //         select.dispatchEvent(new Event('change', { bubbles: true }));
+      //     }, businessType);
+      //     }
+      //       await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
 
-            await page.type('#BusinessAddressLine1', data.Payload.Principal_Address.PA_Address_Line1);
-            await page.type('#City', data.Payload.Principal_Address.PA_City);
-            await page.select('#State', data.Payload.Principal_Address.PA_State); // Select 'New York' from the dropdown
-            await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
-}
+      //       await page.evaluate((businessPurpose) => {
+      //         document.querySelector('#BusinessPurpose').value = businessPurpose;
+      //     }, businessPurpose);
+// }
+await page.waitForSelector('input.btn.btn-success');
+
 await page.evaluate(() => {
   const submitButton = document.querySelector('input.btn.btn-success');
   if (submitButton) {
@@ -3414,10 +3478,14 @@ await page.evaluate(() => {
       submitButton.click();
   }
 });
+await page.waitForSelector('#ra-num-link a');
+
+await randomSleep(10000,20000);
 
 if(data.Payload.Registered_Agent){
         
-  await page.click('#ra-num-link a');
+  await page.click('#ra-num-link a',{visible:true,timeout:10000});
+
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
   await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.Name.RA_Name);
@@ -3429,8 +3497,10 @@ if(data.Payload.Registered_Agent){
   await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
 
 
-
+  await page.waitForSelector('#Attested'); 
   await page.click('#Attested');
+
+  await page.waitForSelector('input.btn.btn-success');
   await page.evaluate(() => {
     const submitButton = document.querySelector('input.btn.btn-success');
     if (submitButton) {
@@ -3441,9 +3511,10 @@ if(data.Payload.Registered_Agent){
        
 
 }
-if(data.Payload.Members){
-
+if(data.Payload.Memeber_Or_Manager_Details){
+  await page.waitForSelector('input.btn.btn-success');
   await page.evaluate(() => {
+    
     const submitButton = document.querySelector('input.btn.btn-success');
     if (submitButton) {
   
@@ -3451,6 +3522,8 @@ if(data.Payload.Members){
     }
   });
 }
+await page.waitForSelector('input.btn.btn-success');
+
 
 await page.evaluate(() => {
   const submitButton = document.querySelector('input.btn.btn-success');
@@ -3514,6 +3587,8 @@ if (signerExists) {
     console.log('Checkbox for the new signer is checked.');
 
   }
+  
+await page.waitForSelector('input.btn.btn-success');
   await page.evaluate(() => {
     const submitButton = document.querySelector('input.btn.btn-success');
     if (submitButton) {
