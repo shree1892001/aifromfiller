@@ -1,107 +1,161 @@
 const puppeteer = require('puppeteer');
 
+const jsonData = {
+  firstName: "John",
+  middleName: "A.",
+  lastName: "Doe",
+  addressLine1: "123 Main St",
+  addressLine2: "Apt 456",
+  city: "Cheyenne",
+  phone: "(555) 123-4567",
+  email: "john.doe@example.com",
+  consent: true
+};
+
+async function randomSleep(min = 1000, max = 2000) {
+  const sleepTime = Math.floor(Math.random() * (max - min + 1)) + min;
+  await new Promise(resolve => setTimeout(resolve, sleepTime));
+}
+
 (async () => {
-  // Launch browser in non-headless mode and open in full screen
-  const browser = await puppeteer.launch({
-    headless: false,
-    args: ['--start-maximized'],  // Open browser in full screen
-  });
-
-  const page = await browser.newPage();
-  
-  // Set the viewport to full screen dimensions
-  const { width, height } = await page.evaluate(() => {
-    return { width: window.screen.width, height: window.screen.height };
-  });
-  await page.setViewport({ width, height });
-  
-  // Navigate to the page containing the login button
-  await page.goto('https://icis.corp.delaware.gov/ecorp2/');
-
+  let browser;
   try {
-    // Wait for the login link to be available in the DOM
-    await page.waitForSelector('a[routerlink="/account/login"]', { visible: true, timeout: 60000 });
-    
-    // Click the login link
-    const loginButton = await page.$('a[routerlink="/account/login"]');
-    
-    if (loginButton) {
-      await loginButton.click();
-      console.log('Clicked login link');
-      
-      // Wait for navigation to the login page
-      await page.waitForNavigation({ waitUntil: 'networkidle0' });
-      console.log('Redirected to login page');
-    } else {
-      throw new Error('Login button not found');
-    }
-
-    // Wait for the username and password fields on the new form
-    await page.waitForSelector('input[formcontrolname="userName"]', { visible: true });
-    await page.waitForSelector('input[formcontrolname="password"]', { visible: true });
-
-    // Fill in the username and password fields
-    const username = 'redberyltech';  // Replace with actual username
-    const password = 'RedBeryl@123';  // Replace with actual password
-    
-    await page.type('input[formcontrolname="userName"]', username);
-    await page.type('input[formcontrolname="password"]', password);
-    
-    console.log('Filled in login credentials');
-
-    // Wait until the button is no longer disabled (it might become enabled after filling the fields)
-    await page.waitForFunction(() => {
-      const button = document.querySelector('button[type="submit"]');
-      return button && !button.disabled;
+    browser = await puppeteer.launch({
+      headless: false,
+      args: ['--start-maximized']
     });
 
-    // Submit the form by clicking the button
-    await page.click('button[type="submit"]');
+    const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(180000); // 180 seconds
 
-    // Wait for navigation after login
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
-    console.log('Login successful, redirected to dashboard or other page');
+    // Set the viewport to full screen dimensions
+    const { width, height } = await page.evaluate(() => {
+      return { width: window.screen.width, height: window.screen.height };
+    });
+    await page.setViewport({ width, height });
 
-    // Wait for the first link element to load
-    await page.waitForSelector('.service-item a', { visible: true });
+    // Navigate to the Wyoming business registration page
+    await page.goto('https://wyobiz.wyo.gov/Business/RegistrationInstr.aspx', { waitUntil: 'networkidle0' });
 
-    // Click the first link with class "service-link"
-    try {
-      const firstLink = await page.$('.service-item a');
-      if (firstLink) {
-        await firstLink.click();
-        console.log('Clicked the first link');
-        
-        // Wait for the dialog to appear (if applicable)
-        const dialogSelector = 'div[role="dialog"]';
-        const closeButtonSelector = 'button.k-button.k-primary';
-        
-        const dialog = await page.waitForSelector(dialogSelector, { visible: true, timeout: 5000 }).catch(() => null);
-        
-        if (dialog) {
-          console.log('Dialog appeared');
-          
-          // Close the dialog by clicking the "Close" button
-          await page.click(closeButtonSelector);
-          console.log('Closed the dialog');
-        } else {
-          console.log('No dialog appeared');
-        }
+    // Click "Form or Register a New Business"
+    await page.waitForSelector('#regStartNow', { timeout: 60000 });
+    await page.click('#regStartNow');
 
-        // Optionally, wait for navigation after the link click
-        await page.waitForNavigation({ waitUntil: 'networkidle0' });
-        console.log('Redirected to the first link\'s destination');
-      } else {
-        throw new Error('No links found on the page');
+    // Select LLC from dropdown
+    await page.waitForSelector('#MainContent_slctBusType', { visible: true, timeout: 60000 });
+    await page.select('#MainContent_slctBusType', 'Limited Liability Company (Domestic)');
+    await page.evaluate(() => {
+      __doPostBack('ctl00$MainContent$slctBusType', '');
+    });
+
+    // Wait for navigation
+    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+    // Check the agreement checkbox
+    await page.click('#MainContent_chkAgree');
+
+    // Click "NEXT" button
+    await page.click('#MainContent_ContinueButton');
+
+    // Wait for entity name input
+    await page.waitForSelector('#txtName', { visible: true, timeout: 180000 });
+
+    // Fill in LLC name
+    const businessName = 'Redberyl LLC';
+    await page.type('#txtName', businessName);
+    await page.type('#txtNameConfirm', businessName);
+
+    // Scroll and click "Continue"
+    await page.evaluate(() => {
+      document.querySelector('input[name="ctl00$MainContent$ContinueButton"]').scrollIntoView();
+    });
+
+    await page.waitForFunction(() => {
+      const button = document.querySelector('input[name="ctl00$MainContent$ContinueButton"]');
+      return button && !button.disabled && button.offsetParent !== null;
+    });
+
+    await page.click('input[name="ctl00$MainContent$ContinueButton"]');
+
+    // Wait for the next page form to appear
+    await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
+
+    // Fill in personal details
+    await page.type('#txtFirstName', jsonData.firstName);
+    await page.type('#txtMiddleName', jsonData.middleName);
+    await page.type('#txtLastName', jsonData.lastName);
+    await page.type('#txtAddr1', jsonData.addressLine1);
+    await page.type('#txtAddr2', jsonData.addressLine2);
+    await page.type('#txtCity', jsonData.city);
+
+    // Handle the postal code popup
+    await page.keyboard.press('Tab'); // Trigger postal code popup
+    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
+    await page.evaluate(() => {
+      const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
+      if (postalCodeItems.length > 0) {
+        postalCodeItems[0].click();
       }
-    } catch (error) {
-      console.error('Error during link click operation:', error.message);
+    });
+    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
+
+    // Ensure postal code is filled
+    await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
+
+    // Fill phone and email
+    await page.type('#txtPhone', jsonData.phone);
+    await page.type('#txtEmail', jsonData.email);
+
+    // Check consent checkbox
+    await page.click('#chkRAConsent');
+
+    // Click the "Continue" button
+    await page.click('#ContinueButton');
+    console.log("Continue clicked");
+
+    // Handle potential error message
+    const errorMessage = await page.evaluate(() => document.querySelector('#lblErrorMessage')?.innerText);
+    if (errorMessage) {
+      console.log("Error detected:", errorMessage);
+      // Handle the error as needed
     }
 
-  } catch (error) {
-    console.error('Error during operation:', error);
-  }
+    // Wait for the next form to appear
+    await page.waitForSelector('#slctCountry', { visible: true, timeout: 180000 });
 
-  // Close the browser (optional)
-  // await browser.close();
+    // Fill in additional details
+    await page.select('#slctCountry', 'USA');
+    await page.type('#txtAddr1', '123 Main St');
+    await page.type('#txtAddr2', 'Suite 100');
+    await page.type('#txtAddr3', 'Building 5');
+    await page.type('#txtCity', 'Anytown');
+    await page.type('#txtState', 'CA');
+    await page.type('#txtPostal', '12345');
+    await page.type('#txtPhone', '1234567890');
+    await page.type('#txtFAX', '0987654321');
+    await page.type('#txtEmail', 'example@example.com');
+
+    // Fill in mailing address
+    await page.select('#slctCountryMail', 'USA');
+    await page.type('#txtAddr1Mail', '456 Elm St');
+    await page.type('#txtAddr2Mail', 'Apt 2B');
+    await page.type('#txtAddr3Mail', 'Floor 3');
+    await page.type('#txtCityMail', 'Othertown');
+    await page.type('#txtStateMail', 'NY');
+    await page.type('#txtPostalMail', '67890');
+
+    // Submit the form
+    await page.click('#ContinueButton');
+    console.log('Form automation completed');
+
+    // Add a delay before closing the browser (optional)
+    await randomSleep(5000, 10000);
+
+  } catch (error) {
+    console.error('An error occurred:', error);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
 })();

@@ -97,7 +97,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
       }
       else if(jsonData.State.stateFullDesc=='Delaware'){
-        await handleDw(page,jsonData);
+        await handleNy(page,jsonData);
 
 
       }
@@ -120,7 +120,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         },5,page);
 
         await randomSleep(3000, 5000);
-        
+        await performLogin(jsonData,page);
         await adjustViewport(page);
 
         let busisnessType;
@@ -334,8 +334,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                   await page.evaluate(() => {
                     const inputElement = document.querySelector('#txtName');
                     inputElement.value = data.Payload.Name.CD_Legal_Name;
-                    inputElement.dispatchEvent(new Event('input', { bubbles: true })); // Trigger input event
-                    inputElement.dispatchEvent(new Event('change', { bubbles: true })); // Trigger change event
+                    inputElement.dispatchEvent(new Event('input', { bubbles: true })); 
+                    inputElement.dispatchEvent(new Event('change', { bubbles: true })); 
                 });
                 await page.type('#txtName', data.Payload.Name.CD_Legal_Name);
                 await page.waitForSelector("#txtNameConfirm",{ visible: true, timeout: 60000 });
@@ -365,11 +365,13 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                   console.log('Clicked ContinueButton');
 
                   if(data.Payload.Registered_Agent){
+                    let parts=data.Payload.Registered_Agent.Name.RA_Name.split(" ");
+
 
                   await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
-                  await page.type('#txtFirstName', data.Payload.Registered_Agent.RA_First_Name);
-                  await page.type('input[name="ctl00$MainContent$ucRA$txtMiddleName"]', data.Payload.Registered_Agent.RA_Middle_Name, { delay: 100 });
-                  await page.type('input[name="ctl00$MainContent$ucRA$txtLastName"]', data.Payload.Registered_Agent.RA_LAST_Name, { delay: 100 });
+                  await page.type('#txtFirstName', parts[0]);
+                  await page.type('input[name="ctl00$MainContent$ucRA$txtMiddleName"]', parts[1], { delay: 100 });
+                  await page.type('input[name="ctl00$MainContent$ucRA$txtLastName"]',parts[2], { delay: 100 });
                   await page.type('input[name="ctl00$MainContent$ucRA$txtAddr1"]', data.Payload.Registered_Agent.Address.RA_Address_Line1, { delay: 100 });
                   await page.type('input[name="ctl00$MainContent$ucRA$txtAddr2"]', data.Payload.Registered_Agent.Address.RA_Address_Line2, { delay: 100 });
                   await page.type('input[name="ctl00$MainContent$ucRA$txtCity"]', data.Payload.Registered_Agent.Address.RA_City, { delay: 100 });
@@ -388,15 +390,13 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       }
     });
   
-    // Wait for the popup to close
     await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
   
-    // Ensure the postal code field is filled (you may need to adjust the selector)
     await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
   
     await page.evaluate(() => {
       AgentChanged();
-      SetPostalCode(); // This is for the postal code to be autofilled based on city
+      SetPostalCode(); 
     });
 
     await randomSleep(80000,1200000); 
@@ -430,17 +430,41 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       continueButton.click();
     });
 
+  }
+    const errorSelector = '#lblErrorMessage';
+    let errorOccurred = false;
+    try {
+      await page.waitForSelector(errorSelector, { visible: true, timeout: 3000 }); 
+      const errorMessage = await page.$eval(errorSelector, el => el.textContent);
+      console.log('Error detected:', errorMessage);
+      errorOccurred = true;
+
+      
+      await page.click('#ContinueButton'); 
+
+  } catch (err) {
+      console.log('No error message detected, proceeding...');
+  }
+  if(errorOccurred){
+    
+  
+    if (isButtonEnabled) {
+      console.log("Continue button is enabled. Attempting to click...");
+  
+      await page.evaluate(() => {
+        const continueButton = document.querySelector('#ContinueButton');
+        continueButton.click();
+      });
+    
+  }
+
     console.log("Clicked Continue after error.");
-
-
-
-
-
-                  }
+ 
                 }
+              }
 
                   if(data.Payload.Principal_Address){
-
+         
 
                   }
 
@@ -1155,7 +1179,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               await randomSleep(1000, 3000);
             }
           
-            if (data.certificateOfStatus) {
+            if (data.Payload.Status.certificateOfStatus) {
               await page.click('#cos_num_flag');
               await randomSleep(1000, 3000);
             }
@@ -1165,10 +1189,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             }
             try{ 
 
-                let legalName =data.llcName; 
+                let legalName =data.Payload.Name.CD_Legal_Name; 
                 if(legalName.includes("LLC") || legalName.includes("L.L.C.") || legalName.includes("Limited Liability Company")){
           
-                await page.type('#corp_name', data.llcName);
+                await page.type('#corp_name', legalName);
                 await randomSleep(1000, 3000);
                 return { success: true, message: "Name added successfully" };
                 }else{
@@ -1188,45 +1212,52 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             
             
             }  
-            await page.type('#princ_addr1', data.principalPlace.address);
+            await page.type('#princ_addr1', data.Payload.Principal_Address.PA_Address_Line1);
             await randomSleep(1000, 3000);
-            await page.type('#princ_addr2', data.principalPlace.suite);
+            await page.type('#princ_addr2', data.Payload.Principal_Address.PA_Address_Line2);
             await randomSleep(1000, 3000);
-            await page.type('#princ_city', data.principalPlace.city);
+            await page.type('#princ_city', data.Payload.Principal_Address.PA_City);
             await randomSleep(1000, 3000);
-            await page.type('#princ_st', data.principalPlace.state);
+            await page.type('#princ_st', data.Payload.Principal_Address.PA_State);
             await randomSleep(1000, 3000);
-            await page.type('#princ_zip', data.principalPlace.zip);
+            await page.type('#princ_zip', data.Payload.Principal_Address.PA_Postal_Code);
             await randomSleep(1000, 3000);
-            await page.type('#princ_cntry', data.principalPlace.country);
+            await page.type('#princ_cntry', data.Payload.Principal_Address.PA_Country);
             await randomSleep(1000, 3000);
           
-            if (data.mailingAddressSameAsPrincipal) {
+            if (data.Payload.Mailing_Address.MA_Address_Line1 === data.Payload.Principal_Address.PA_Address_Line1) {
               await page.click('#same_addr_flag');
               await randomSleep(1000, 3000);
-            } else {
-              await page.type('#mail_addr1', data.mailingAddress.address);
+            } else if(data.Payload.Mailing_Address.MA_Addres) {
+              await page.type('#mail_addr1', data.Payload.Principal_Address.MA_Address_Line1);
               await randomSleep(1000, 3000);
-              await page.type('#mail_addr2', data.mailingAddress.suite);
+              await page.type('#mail_addr2', data.Payload.Principal_Address.MA_Address_Line2);
               await randomSleep(1000, 3000);
-              await page.type('#mail_city', data.mailingAddress.city);
+              await page.type('#mail_city', data.Payload.Principal_Address.MA_City);
               await randomSleep(1000, 3000);
-              await page.type('#mail_st', data.mailingAddress.state);
+              await page.type('#mail_st', data.Payload.Principal_Address.MA_Address_Line1);
               await randomSleep(1000, 3000);
-              await page.type('#mail_zip', data.mailingAddress.zip);
+              await page.type('#mail_zip', data.Payload.Principal_Address.MA_Postal_Code);
               await randomSleep(1000, 3000);
-              await page.type('#mail_cntry', data.mailingAddress.country);
+              await page.type('#mail_cntry', data.Payload.Principal_Address.MA_Country);
               await randomSleep(1000, 3000);
             }
-          
-            if (data.Registered_Agent.Name.lastName) {
-              await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
+            let fullName=data.Registered_Agent.Name.RA_Name; 
+
+            let parts=fullName.split(" "); 
+            if (data.Registered_Agent.Name) {
+              
+
+
+
+              await page.type('#ra_name_last_name', parts[2]);
               await randomSleep(1000, 3000);
-              await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
+              await page.type('#ra_name_first_name', parts[0]);
               await randomSleep(1000, 3000);
-              await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
+
+              await page.type('#ra_name_m_name', parts[1]);
               await randomSleep(1000, 3000);
-              await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
+              await page.type('#ra_name_title_name', data.Registered_Agent.Name.RA_Title);
               await randomSleep(1000, 3000);
               await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
               await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
@@ -1245,23 +1276,23 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
             }
-            await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
+            await page.type('#ra_signautre',parts[2] + parts[1]); 
 
           
-            if (data.purpose) {
-              await page.type('#purpose', data.purpose);
+            if (data.Payload.Registered_Agent.Purpose) {
+              await page.type('#purpose', data.Payload.Registered_Agent.Purpose);
               await randomSleep(1000, 3000);
             }
-            if(data.Correspondance.Name){
+            if(data.Payload.Correspondance_Information.Correspondance_Details.Name){
 
-                await page.type('#ret_name',data.Correspondance.Name);
-                await page.type('#ret_email_addr',data.Correspondance.Email);
-                await page.type('#email_addr_verify',data.Correspondance.Email);
+                await page.type('#ret_name',data.Payload.Correspondance_Information.Correspondance_Details.Name.CA_Name);
+                await page.type('#ret_email_addr',data.Payload.Correspondance_Information.Correspondance_Details.CA_Email);
+                await page.type('#email_addr_verify',data.Payload.Correspondance_Information.Correspondance_Details.CA_Email);
             }
-            await page.type('#signature',data.Correspondance.Name);
+            await page.type('#signature',data.Payload.Correspondance_Information.Correspondance_Details.CA_Name);
             if(data.Manager.Name.FirstName){
-            await page.type('#off1_name_title', data.Manager.Name.Title1);
-            await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
+            await page.type('#off1_name_title', data.Payload.Correspondance_Information.Correspondance_Details.Name.CA_Title);
+            await page.type('#off1_name_last_name', data.Paylaod.Manager.Name.LastName1);
             await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
           await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
            await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
