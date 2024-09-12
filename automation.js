@@ -4,7 +4,6 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const axios = require('axios');
 const fs = require('fs');
-const websock = require('ws'); 
 const cors = require('cors');
 
 const path = require('path');
@@ -120,7 +119,6 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         },5,page);
 
         await randomSleep(3000, 5000);
-        await performLogin(jsonData,page);
         await adjustViewport(page);
 
         let busisnessType;
@@ -167,68 +165,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         log("Next step completed and preview loaded.");
         await randomSleep(10000000, 2200000000);
     }
-    async function performLogin(page, jsonData) {
-      try {
-          console.log("Attempting to login...");
-  
-          // Wait for the form to be visible
-          await page.waitForSelector('form', { visible: true, timeout: 120000 });
-  
-          // Fill in the login form and handle the submit
-          await page.evaluate((jsonData) => {
-              const usernameField = document.querySelector('input[name="P101_USERNAME"]');
-              const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-              const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
-  
-              if (!usernameField || !passwordField || !submitButton) {
-                  throw new Error("Couldn't find login elements");
-              }
-  
-              // Set the username and password
-              usernameField.value = jsonData.State.filingWebsiteUsername;
-              passwordField.value = jsonData.State.filingWebsitePassword;
-  
-              // Check if `apex` object is available
-              if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
-                  // Use apex.submit if available
-                  apex.submit({ request: 'LOGIN', validate: true });
-              } else if (submitButton) {
-                  // Fallback to clicking the button if `apex.submit` is not available
-                  submitButton.click();
-              } else {
-                  throw new Error("Submit method or button not found");
-              }
-  
-          }, jsonData);
-  
-          // Wait for navigation or some indication that login succeeded
-          await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-  
-          // Check for error messages after navigation
-          const alertSelector = '#t_Alert_Notification';
-          const errorMessage = 'Invalid Login Credentials';
-          
-          const alertVisible = await page.evaluate((alertSelector) => {
-              const alert = document.querySelector(alertSelector);
-              return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
-          }, alertSelector);
-  
-          if (alertVisible) {
-              console.error("Login failed: Invalid Login Credentials");
-              throw new Error("Login failed: Invalid Login Credentials");
-          }
-  
-          console.log('Login successful.');
-  
-      } catch (error) {
-          console.error("Login failed:", error.message);
-          throw error; // Re-throw the error for higher-level handling
-      }
-  }
-  
-  
-
-    } catch (e) {
+      } catch (e) {
         console.error("Error running Puppeteer:", e);
     
         // Pass a more specific error message to your API response
@@ -577,8 +514,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
 
           
-            if (data.purpose) {
-              await page.type('#purpose', data.purpose);
+            if (data.Payload.Registered_Agent.Purpose) {
+              await page.type('#purpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
               await randomSleep(1000, 3000);
             }
             if(data.Correspondance.Name){
@@ -926,8 +863,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
   
             
-              if (data.purpose) {
-                await page.type('#purpose', data.purpose);
+              if (data.Payload.Registered_Agent.Purpose) {
+                await page.type('#purpose',data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
                 await randomSleep(1000, 3000);
               }
               if(data.Correspondance.Name){
@@ -1098,8 +1035,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               try {
                 console.log("Navigating to the Landing page...");
 
-
-                await page.goto(jsonData.State.stateUrl, {
+                const url = "https://efile.sunbiz.org/llc_file.html";
+                const baseUrl = url.split('/llc_file.html')[0];  // Split the URL till the base part
+                const appendedUrl = `${baseUrl}/llc_file.html`;
+                await page.goto(appendedUrl, {
                   waitUntil: 'networkidle0',
                   timeout: 60000
                 });
@@ -1280,7 +1219,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
           
             if (data.Payload.Registered_Agent.Purpose) {
-              await page.type('#purpose', data.Payload.Registered_Agent.Purpose);
+              await page.type('#purpose', data.Payload.Registered_Agent.CD_Business_Purpose_Details);
               await randomSleep(1000, 3000);
             }
             if(data.Payload.Correspondance_Information.Correspondance_Details.Name){
@@ -1292,7 +1231,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             await page.type('#signature',data.Payload.Correspondance_Information.Correspondance_Details.CA_Name);
             if(data.Manager.Name.FirstName){
             await page.type('#off1_name_title', data.Payload.Correspondance_Information.Correspondance_Details.Name.CA_Title);
-            await page.type('#off1_name_last_name', data.Paylaod.Manager.Name.LastName1);
+            await page.type('#off1_name_last_name', data.Payload.Manager.Name.LastName1);
             await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
           await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
            await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
@@ -1450,9 +1389,11 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
                 try {
                   console.log("Navigating to the Landing page...");
+                  const url = "https://efile.sunbiz.org/profit_file.html";
+                const baseUrl = url.split('/profit_file.html')[0];  // Split the URL till the base part
+                const appendedUrl = `${baseUrl}/profit_file.html`;
   
-  
-                  await page.goto(jsonData.State.stateUrl, {
+                  await page.goto(appendedUrl, {
                     waitUntil: 'networkidle0',
                     timeout: 60000
                   });
@@ -1628,8 +1569,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
               await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
   
             
-              if (data.purpose) {
-                await page.type('#purpose', data.purpose);
+              if (data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details) {
+                await page.type('#purpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Detail);
                 await randomSleep(1000, 3000);
               }
               if(data.Correspondance.Name){
@@ -2407,7 +2348,7 @@ async function addDataLLC(page, data) {
           console.log("Attempting to add the name");
   
           // Wait for the form to be available
-          await page.waitForSelector('form', { visible: true, timeout: 120000 });
+          // await page.waitForSelector('form', { visible: true, timeout: 120000 });
   
           // Fill out the form and submit
           await page.evaluate((data) => {
@@ -3032,7 +2973,7 @@ businessDesignator.forEach(designator => {
               }
           });
 
-            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose);
+            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
             await page.evaluate(() => {
               const submitButton = document.querySelector('input.btn.btn-success');
               if (submitButton) {
@@ -3449,7 +3390,7 @@ businessDesignator.forEach(designator => {
               }
           });
 
-            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose);
+            await page.type('#BusinessPurpose', data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
             await page.evaluate(() => {
               const submitButton = document.querySelector('input.btn.btn-success');
               if (submitButton) {
