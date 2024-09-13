@@ -3228,8 +3228,27 @@ businessDesignator.forEach(designator => {
             if(option){
                 statecheck.value=option.value ;
             }
-            await page.type('#Zip', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code);
-            await page.type('#ZipPlus', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code); 
+            // await page.type('#Zip', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code);
+            await page.evaluate((data) => {
+              const postalInput = document.querySelector('#Zip');
+              if (postalInput) {
+                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code;  // Set value directly using document.querySelector
+                postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+              } else {
+                console.error('Postal Code input field not found');
+              }
+            }, data);
+            await page.waitForSelector('#ZipPlus');
+            await page.evaluate((data) => {
+              const postalInput = document.querySelector('#ZipPlus');
+              if (postalInput) {
+                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code;  // Set value directly using document.querySelector
+                postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+              } else {
+                console.error('Postal Code input field not found');
+              }
+            }, data); 
+            // await page.type('#ZipPlus', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code); 
             page.on('dialog', async dialog => {
               console.log(dialog.message());
               await dialog.accept();
@@ -3278,13 +3297,35 @@ if(data.Payload.Registered_Agent){
   await page.click('#ra-num-link a');
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
-  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.Name.RA_Name);
-  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.Name.Email);
-  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.Address.RA_Address_Line1);
-  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.Address.RA_Address_Line2);
-  await page.type('#OfficeCity', data.Payload.Registered_Agent.Address.RA_City)
-  await page.type('#OfficeZip', data.Payload.Registered_Agent.Address.RA_Postal_Code);
-  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+  await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email);
+  await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
+  await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
+  await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City)
+  // await page.type('#OfficeZip', data.Payload.Registered_Agent.Addres.RA_Postal_Code);
+
+  await page.waitForSelector('#OfficeZip')
+  await page.evaluate((data) => {
+    const postalInput = document.querySelector('#OfficeZip');
+    if (postalInput) {
+      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;  // Set value directly using document.querySelector
+      postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+    } else {
+      console.error('Postal Code input field not found');
+    }
+  }, data);
+  // await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.Address.RA_Postal_Code);
+
+  await page.waitForSelector('#OfficeZipPlus')
+  await page.evaluate((data) => {
+    const postalInput = document.querySelector('#OfficeZipPlus');
+    if (postalInput) {
+      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;  // Set value directly using document.querySelector
+      postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+    } else {
+      console.error('Postal Code input field not found');
+    }
+  }, data);
 
 
 
@@ -3328,7 +3369,7 @@ await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
 
 await page.evaluate(() => {
   const businessType = document.querySelector('#Title');
-  const option = Array.from(businessType.options).find(opt => opt.text === 'Authorized Representative');
+  const option = Array.from(businessType.options).find(opt => opt.text.trim() === 'Authorized Representative');
   if (option) {
       businessType.value = option.value;
       businessType.dispatchEvent(new Event('change', { bubbles: true }));  // Trigger the change event
@@ -3354,15 +3395,15 @@ if (isErrorVisible) {
       await page.click('#modal-close-btn'); 
   });
     
-  const signerExists = await page.evaluate(() => {
+  const signerExists = await page.evaluate((data) => {
     const rows = Array.from(document.querySelectorAll('#table-body tr'));
     return rows.some(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
-});
+},data);
 
 if (signerExists) {
     console.log('New signer is successfully added to the table.');
 
-    await page.evaluate(() => {
+    await page.evaluate((data) => {
         const row = Array.from(document.querySelectorAll('#table-body tr'))
             .find(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
         if (row) {
@@ -3371,7 +3412,7 @@ if (signerExists) {
                 checkbox.click(); 
             }
         }
-    });
+    },data);
 
     console.log('Checkbox for the new signer is checked.');
 
