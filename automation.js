@@ -303,29 +303,57 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
                 if(data.Payload.Date.EffectiveDate){
                      await randomSleep(4000,5000);
-                     await page.evaluate(() => {
-                        document.querySelector('#ContinueButton').click();
-                      });
-                      console.log('Clicked ContinueButton');
 
-                      await page.evaluate(() => {
-                        document.querySelector('#ContinueButton').click();
-                      });
-                      await page.waitForSelector('#ContineButton',{ visible: true, timeout: 60000 });
+                     const clickContinueAndWait = async () => {
+                      try {
+                        await Promise.all([
+                          page.waitForNavigation({ waitUntil: 'networkidle0' }),
+                          page.click('#ContinueButton')
+                        ]);
+                      } catch (error) {
+                        console.error('Error clicking Continue button:', error);
+                        await page.type('#txtDelayedDate', data.Payload.Date.EffectiveDate, { delay: 100});
+                
+                        await page.evaluate(() => {
+                          const continueButton = document.getElementById('ContinueButton');
+                      continueButton.scrollIntoView();
+                      
+                      // Trigger a click event on the continue button
+                      continueButton.click();
+                        });
+                        await page.waitForNavigation({ waitUntil: 'networkidle0' });
+                      }
+                
+                      
+                    };
+                  
+                    // Click the Continue button and wait for the page to load
+                    await clickContinueAndWait();
+                  
+                    // Check if we've successfully moved to the next page
+                    const currentStep = await page.evaluate(() => {
+                      const activeTab = document.querySelector('.tabActive');
+                      return activeTab ? activeTab.textContent.trim() : null;
+                    });
+                    console.log(currentStep);
+                   
 
-                      console.log('Clicked ContinueButton');
 
+
+
+                }else{
+                  await clickContinueAndWait(); 
+                
 
 
                 }
-                await page.waitForSelector('#ContineButton',{ visible: true, timeout: 60000 });
-                await page.evaluate(() => {
-                    document.querySelector('#ContinueButton').click();
-                  });
+
+
+               
                   console.log('Clicked ContinueButton');
 
                   if(data.Payload.Registered_Agent){
-                    let parts=data.Payload.Registered_Agent.Name.RA_Name.split(" ");
+                    let parts=data.Payload.Registered_Agent.RA_Name.split(" ");
 
 
                   await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
@@ -340,9 +368,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     // Wait for the postal code popup to appear
     await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
   
-    // Wait for a short moment to ensure the popup is fully loaded
   
-    // Select a postal code option (e.g., the first one)
     await page.evaluate(() => {
       const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
       if (postalCodeItems.length > 0) {
@@ -363,7 +389,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
   
-                  await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.Contact.RA_Phone, { delay: 100 });
+                  await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
                   await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
 
                   await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
@@ -375,6 +401,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
   await page.evaluate(() => {
     const continueButton = document.querySelector('#ContinueButton');
     continueButton.scrollIntoView();
+    continueButton.click(); 
   });
 
   const isButtonEnabled = await page.evaluate(() => {
@@ -400,20 +427,94 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       errorOccurred = true;
 
       
-      await page.click('#ContinueButton'); 
+     
 
   } catch (err) {
       console.log('No error message detected, proceeding...');
   }
   if(errorOccurred){
     
-  
-    if (isButtonEnabled) {
+   await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+      if (isButtonEnabled) {
       console.log("Continue button is enabled. Attempting to click...");
-  
+       await page.waitForSelector('#ContinueButton',{ visible: true, timeout: 3000 }) ;
       await page.evaluate(() => {
-        const continueButton = document.querySelector('#ContinueButton');
+        const continueButton = documnet.getElementById('#ContinueButton');
         continueButton.click();
+        randomSleep(80000, 1200000);
+
+        // Fill in phone and email details
+         page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
+       page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+        
+        // Check the consent checkbox
+         page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
+        
+        // Scroll to and attempt to click the "Continue" button
+         page.evaluate(() => {
+          const continueButton = document.querySelector('#ContinueButton');
+          continueButton.scrollIntoView();
+        });
+        
+        // Ensure the button is enabled and clickable
+        const isButtonEnabled =  page.evaluate(() => {
+          const continueButton = document.querySelector('#ContinueButton');
+          return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+        });
+        
+        if (isButtonEnabled) {
+          console.log("Continue button is enabled. Attempting to click...");
+          
+          // Click the button using `evaluate` to ensure it’s triggered within the page context
+           page.evaluate(() => {
+            const continueButton = document.querySelector('#ContinueButton');
+            continueButton.click();
+          });
+        
+          // Wait for any navigation or change after clicking the button
+           page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+        } else {
+          console.log("Continue button is not enabled or not clickable.");
+        }
+        
+        // Check if an error message is displayed after clicking the button
+        const errorSelector = '#lblErrorMessage';
+        let errorOccurred = false;
+        try {
+           page.waitForSelector(errorSelector, { visible: true, timeout: 3000 });
+          const errorMessage =  page.$eval(errorSelector, el => el.textContent);
+          console.log('Error detected:', errorMessage);
+          errorOccurred = true;
+        } catch (err) {
+          console.log('No error message detected, proceeding...');
+        }
+        
+        // Handle the case where the error occurred
+        if (errorOccurred) {
+          console.log("An error occurred, trying to proceed again...");
+        
+          // Try to click the "Continue" button again if error is detected
+           page.waitForSelector('#ContinueButton', { visible: true, timeout: 60000 });
+          const retryButtonEnabled =  page.evaluate(() => {
+            const continueButton = document.querySelector('#ContinueButton');
+            return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+          });
+        
+          if (retryButtonEnabled) {
+            console.log("Retrying to click the Continue button...");
+            page.evaluate(() => {
+              const continueButton = document.querySelector('#ContinueButton');
+              continueButton.click();
+            });
+        
+            // Wait for the page to transition after the retry
+            page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+          } else {
+            console.log("Retry failed, the Continue button is still not clickable.");
+          }
+        }
+        
+        
       });
     
   }
@@ -2471,7 +2572,7 @@ async function addDataLLC(page, data) {
               }
   
               let legalName = data.Payload.Name.CD_Legal_Name; 
-        const designators = [];
+        const designators =['LLC','L.L.C','LL.C.','Limited Liability Company'];
             const upperCaseName = legalName.toUpperCase();
             console.log("the company name is :=",upperCaseName); 
 
@@ -2896,10 +2997,10 @@ async function fillNextPageCorp(page, data) {
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
                 document.querySelector('input[name="P3_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
-                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
-                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
-                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
-                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+                document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.RA_Address.RA_Address_Line1;
+                document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.RA_Address.RA_Address_Line2;
+                document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.RA_Address.RA_City;
+                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P3_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -3399,11 +3500,11 @@ async function fillNextPage(page, data) {
                 const check=document.querySelector('#P4_RA_OPTION_0')
                 check.click()
                 if(agentOpt1 && agentOpt1.checked){
-                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.Name.RA_Name;
-                document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
-                document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.Address.RA_Address_Line2;
-                document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.Address.RA_City;
-                document.querySelector('input[name="P4_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+                document.querySelector('input[name="P4_RA_NAME"]').value = data.Payload.Registered_Agent.RA_Name;
+                document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.RA_Address.RA_Address_Line1;
+                document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.RA_Address.RA_Address_Line2;
+                document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.RA_Address.RA_City;
+                document.querySelector('input[name="P4_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P4_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -3587,7 +3688,7 @@ await randomSleep(10000,20000);
 
 if(data.Payload.Registered_Agent){
         
-  await page.click('#ra-num-link a',{visible:true,timeout:10000});
+  await page.click('#ra-num-link a',{visible:true,timeout:1000});
 
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
@@ -3595,13 +3696,41 @@ if(data.Payload.Registered_Agent){
   await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email);
   await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
   await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
-  await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City)
-  await page.type('#OfficeZip', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
-  await page.type('#OfficeZipPlus', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
+   await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City);
+   await page.waitForSelector('#OfficeZip', { visible: true, timeout: 5000 });
 
+   const postalCode = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
+
+   await page.evaluate((postalCode) => {
+     const postalInput = document.querySelector('#OfficeZip');
+     if (postalInput) {
+       postalInput.value = "08802";  // Set value directly using document.querySelector
+       postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+     } else {
+       console.error('Postal Code input field not found');
+     }
+   }, postalCode);
+   
+
+  //  await page.evaluate((postalCode) => {
+  //    const postalInput = document.querySelector('#OfficeZipPlus');
+  //    if (postalInput) {
+  //      postalInput.value = postalCode;  // Set value directly using document.querySelector
+  //      postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
+  //    } else {
+  //      console.error('Postal Code input field not found');
+  //    }
+  //  }, postalCode);
 
   await page.waitForSelector('#Attested'); 
-  await page.click('#Attested');
+  // await page.click('#Attested');
+  await page.evaluate(() => {
+    const submitButton = document.querySelector('#Attested');
+    if (submitButton) {
+  
+        submitButton.click();
+    }
+  });
 
   await page.waitForSelector('input.btn.btn-success');
   await page.evaluate(() => {
@@ -3636,6 +3765,16 @@ await page.evaluate(() => {
   }
 });
 
+await page.waitForSelector('input.btn.btn-success');
+
+
+await page.evaluate(() => {
+  const submitButton = document.querySelector('input.btn.btn-success');
+  if (submitButton) {
+
+      submitButton.click();
+  }
+});
 await page.waitForSelector('#add-signer-btn', { visible: true, timeout: 30000 });
 await page.click('#add-signer-btn');
 
@@ -3643,11 +3782,33 @@ await page.waitForSelector('#signer-modal', { visible: true ,timeout: 30000 });
 await page.type('#Name',data.Payload.Organizer_Information.Organizer_Details.Org_Name );
 await page.waitForSelector('#Title', { visible: true ,timeout: 30000 });
 
-busisnessType= document.querySelector('#Title');
-const option  =Array.from(busisnessType.options).find(opt => opt.text === 'Authorized Representative');
-if(option){
-  busisnessType.value=option.value ;
-}
+await page.evaluate(() => {
+  const busisnessType = document.querySelector('#Title');
+  
+  // Check if the businessType element exists
+  if (!busisnessType) {
+    console.error('Dropdown element not found');
+    return;
+  }
+
+  // Check if options exist within the dropdown
+  const options = Array.from(busisnessType.options);
+  if (options.length === 0) {
+    console.error('No options found in dropdown');
+    return;
+  }
+
+  // Find the option with the text 'Authorized Representative'
+  const option = options.find(opt => opt.text.trim() === 'Authorized Representative');
+  
+  if (option) {
+    busisnessType.value = option.value; // Set the value of the dropdown
+    busisnessType.dispatchEvent(new Event('change', { bubbles: true })); // Trigger a change event if necessary
+  } else {
+    console.error('Option not found in dropdown');
+  }
+});
+
 
 const isErrorVisible = await page.evaluate(() => {
   const errorMessageElement = document.querySelector('#modal-error-msg');
@@ -3668,15 +3829,15 @@ if (isErrorVisible) {
       await page.click('#modal-close-btn'); 
   });
     
-  const signerExists = await page.evaluate(() => {
+  const signerExists = await page.evaluate((data) => {
     const rows = Array.from(document.querySelectorAll('#table-body tr'));
     return rows.some(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
-});
+},data);
 
 if (signerExists) {
     console.log('New signer is successfully added to the table.');
 
-    await page.evaluate(() => {
+    await page.evaluate((data) => {
         const row = Array.from(document.querySelectorAll('#table-body tr'))
             .find(row => row.textContent.includes(data.Payload.Organizer_Information.Organizer_Details.Org_Name)); 
         if (row) {
@@ -3685,7 +3846,7 @@ if (signerExists) {
                 checkbox.click(); 
             }
         }
-    });
+    },data);
 
     console.log('Checkbox for the new signer is checked.');
 
