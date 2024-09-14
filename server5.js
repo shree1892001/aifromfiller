@@ -93,13 +93,18 @@ const jsonData = {
           page.waitForNavigation({ waitUntil: 'networkidle0' }),
           await page.click('#ContinueButton')
         ]);
+       
+    
       } catch (error) {
         console.error('Error clicking Continue button:', error);
-        // If the above fails, try an alternative method
-        await page.type('#txtDelayedDate', '09/18/2024', { delay: 100 });
+        const isDelayedDateFieldPresent = await page.$('#txtDelayedDate');
+        if (isDelayedDateFieldPresent) {
+          await page.type('#txtDelayedDate', '09/18/2024', { delay: 100 });
+        }
+        // await page.type('#txtDelayedDate', '09/18/2024', { delay: 100 });
 
         await page.evaluate(() => {
-          const continueButton = document.getElementById('ContinueButton');
+          const continueButton = document.querySelector('#ContinueButton');
       continueButton.scrollIntoView();
       
       // Trigger a click event on the continue button
