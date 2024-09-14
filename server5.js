@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+
 const jsonData = {
   "firstName": "John",
   "middleName": "A.",
@@ -18,249 +19,324 @@ const jsonData = {
     browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
-    // Increase default timeout
-    page.setDefaultNavigationTimeout(180000); // 180 seconds
+    page.setDefaultNavigationTimeout(180000); 
 
-    // Log console messages from the page
-    // page.on('console', msg => console.log('PAGE LOG:', msg.text()));
-
-    // Navigate to the initial page
     await page.goto('https://wyobiz.wyo.gov/Business/RegistrationInstr.aspx', { waitUntil: 'networkidle0' });
 
-    // Click the "Form or Register a New Business" button
     await page.waitForSelector('#regStartNow', { timeout: 60000 });
     await page.click('#regStartNow');
-    
-    // Wait for the dropdown to be visible
+
     await page.waitForSelector('#MainContent_slctBusType', { visible: true, timeout: 60000 });
 
-    // Open the dropdownc;s'
-    //  by clicking on it
     await page.click('#MainContent_slctBusType');
-    await randomSleep(20000, 40000);
+    await randomSleep(2000, 4000);
 
-    // Select the option based on the visible text
     await page.evaluate(() => {
       const dropdown = document.querySelector('#MainContent_slctBusType');
       const options = Array.from(dropdown.options);
-      const optionToSelect = options.find(option => option.text.includes('Limited Liability Company (Domestic)'));
+      const optionToSelect = options.find(option => option.text.includes('Profit Corporation (Domestic)'));
       if (optionToSelect) {
         dropdown.value = optionToSelect.value;
         dropdown.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
 
-    // Trigger the __doPostBack manually to simulate the onchange event
     await page.evaluate(() => {
       __doPostBack('ctl00$MainContent$slctBusType', '');
     });
 
-    // Wait for the navigation or form submission to complete
     await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
-    // Check the attestation checkbox
     await page.click('#MainContent_chkAgree');
 
-    // Click the "NEXT" button
     await page.click('#MainContent_ContinueButton');
-    
-    // Wait for a specific element on the next page to appear
+
     await page.waitForSelector('#txtName', { visible: true, timeout: 180000 });
 
-    // Set the value of the input field
     await page.evaluate(() => {
       const inputElement = document.querySelector('#txtName');
-      inputElement.value = 'Redberyl LLC';
+      inputElement.value = 'Redberyl123 Corp';
       inputElement.dispatchEvent(new Event('input', { bubbles: true }));
       inputElement.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    // Fill in business information
-    await page.type('#txtName', 'My New LLC');
+    await page.type('#txtName', 'My New Corp.');
     await randomSleep(1000, 4000);
-    await page.type('#txtNameConfirm', 'My New LLC');
+    await page.type('#txtNameConfirm', 'My New Corp.');
     console.log("Entity name added");
 
-    // Scroll to s button
-    // await page.evaluate(() => {
-    //   document.querySelector('#ContinueButton').scrollIntoView();
-    // });
-
-    // Ensure the button is clickable
-    const clickContinueAndWait = async () => {
-      try {
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: 'networkidle0' }),
-          await page.click('#ContinueButton')
-        ]);
-       
-    
-      } catch (error) {
-        console.error('Error clicking Continue button:', error);
-        const isDelayedDateFieldPresent = await page.$('#txtDelayedDate');
-        if (isDelayedDateFieldPresent) {
-          await page.type('#txtDelayedDate', '09/18/2024', { delay: 100 });
-        }
-        // await page.type('#txtDelayedDate', '09/18/2024', { delay: 100 });
-
-        await page.evaluate(() => {
-          const continueButton = document.querySelector('#ContinueButton');
+    await page.evaluate(() => {
+      const continueButton = document.getElementById('ContinueButton');
       continueButton.scrollIntoView();
-      
-      // Trigger a click event on the continue button
-      continueButton.click();
-        });
-        await page.waitForNavigation({ waitUntil: 'networkidle0' });
-      }
-
-      
-    };
-  
-    // Click the Continue button and wait for the page to load
-    await clickContinueAndWait();
-  
-    // Check if we've successfully moved to the next page
-    const currentStep = await page.evaluate(() => {
-      const activeTab = document.querySelector('.tabActive');
-      return activeTab ? activeTab.textContent.trim() : null;
-    });
-    console.log(currentStep);
-    
-  
-    // Wait for a specific element on the next page to appear
-    await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
-    console.log('Navigation completed');
-
-    await page.type('#txtFirstName', 'Sam');
-    await page.evaluate(() => AgentChanged()); // Trigger the onchange event manually
-  
-    // Fill in Middle Name
-    await page.type('#txtMiddleName', 'A');
-    await page.evaluate(() => AgentChanged()); // Trigger the onchange event manually
-  
-    // Fill in Last Name
-    await page.type('#txtLastName', 'Kureshi');
-    await page.evaluate(() => AgentChanged()); // Trigger the onchange event manually
-  
-    // Fill in Address Line 1
-    await page.type('#txtAddr1', '507-B Amnora Chambers ,Amnora mall');
-    await page.evaluate(() => AgentChanged()); // Trigger the onchange event manually
-  
-    // Fill in City
-    await page.type('#txtCity', 'Casper');
-    await page.keyboard.press('Tab'); // Trigger any onchange events
-
-    // Wait for the postal code popup to appear
-    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
-  
-    // Wait for a short moment to ensure the popup is fully loaded
-  
-    // Select a postal code option (e.g., the first one)
-    await page.evaluate(() => {
-      const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
-      if (postalCodeItems.length > 0) {
-        postalCodeItems[0].click();
-      }
-    });
-  
-    // Wait for the popup to close
-    await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
-  
-    // Ensure the postal code field is filled (you may need to adjust the selector)
-    await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
-  
-    await page.evaluate(() => {
-      AgentChanged();
-      SetPostalCode(); // This is for the postal code to be autofilled based on city
-    });
-    await randomSleep(12000,20000);
-  
-    // Phone
-    await page.type('#txtPhone', '(555) 123-4567');
-    
-    // Email
-    await page.type('#txtEmail', 'sam.kureshi@gmail.com');
-    await page.evaluate(() => AgentChanged()); // Trigger the onchange event manually
-  
-    // Check the consent checkbox
-    await page.click('#chkRAConsent');
-  
-
-    const errorMessage = await page.evaluate(() => {
-      const error = document.querySelector('#lblErrorMessage');
-      return error ? error.innerText : null;
+      continueButton.click(); 
     });
 
-    if (errorMessage) {
-      console.log("Error detected:", errorMessage);
+    await page.waitForSelector("#ddlDuration", { visible: true, timeout: 18000 });
 
-      // Ensure the error message is visible
-      await page.evaluate(() => {
-        const continueButton = document.getElementById('ContinueButton');
-    continueButton.scrollIntoView();
-    
-    // Trigger a click event on the continue button
-    continueButton.click();
-      });
-      await clickContinueAndWait();
+    await selectOptionByText(page, '#ddlDuration', 'Perpetual');
 
+    const durationValue = await page.evaluate(() => document.querySelector('#ddlDuration').value);
+    if (durationValue !== '5') {
+      throw new Error("Invalid selection for Period of Duration. Expected 'Perpetual'.");
     }
 
+    await page.waitForSelector("#ddlShareClass", { visible: true, timeout: 18000 });
 
+    await selectOptionByText(page, '#ddlShareClass', 'Common');
+    const shareClass = 'Common';
 
+    const shareClassValue = await page.evaluate(() => document.querySelector('#ddlShareClass').value);
+    if (shareClassValue === '0') {
+      throw new Error("Class of Shares is not selected.");
+    }
 
-      const selectOption = async (selector, value) => {
-        await page.evaluate((selector, value) => {
-          const select = document.querySelector(selector);
-          const option = Array.from(select.options).find(option => option.value === value);
-          if (option) {
-            option.selected = true;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, selector, value);
-      };
-  
+    await page.evaluate(() => {
+      ['#txtCommonShares', '#txtCommonPar', '#txtPreferredShares', '#txtPreferredPar'].forEach(selector => {
+        const input = document.querySelector(selector);
+        if (input) input.value = '';
+      });
+    });
 
-    await page.waitForSelector("#slctCountry",{ visible: true, timeout: 180000 })    
-    await selectOption('#slctCountry', 'USA');
-    await page.type('#txtAddr1', '123 Main St');
-    await page.type('#txtAddr2', 'Suite 100');
-    await page.type('#txtAddr3', 'Building 5');
-    await page.type('#txtCity', 'Casper');
-    await page.type('#txtState', 'WY');
-    await page.type('#txtPostal', '12345');
-    await page.type('#txtPhone', '1234567890');
-    await page.type('#txtFAX', '0987654321');
-    await page.type('#txtEmail', 'example@example.com');
+    await randomSleep(1000, 3000);
 
-    // Interact with the Mailing Address form fields
-    await page.select('#slctCountryMail', 'USA');
-    await page.type('#txtAddr1Mail', '456 Elm St');
-    await page.type('#txtAddr2Mail', 'Apt 2B');
-    await page.type('#txtAddr3Mail', 'Floor 3');
-    await page.type('#txtCityMail', 'Othertown');
-    await page.type('#txtStateMail', 'NY');
-    await page.type('#txtPostalMail', '67890');
+    if (shareClass === 'Common') {
+      await fillInput(page, '#txtCommonShares', '1000');
+      await fillInput(page, '#txtCommonPar', '1.0000');
+    } else if (shareClass === 'Preferred') {
+      await page.waitForSelector('#plcPreferredStock', { visible: true });
+      await fillInput(page, '#txtPreferredShares', '500');
+      await fillInput(page, '#txtPreferredPar', '2.0000');
+    } else if (shareClass === 'Common and Preferred') {
+      await fillInput(page, '#txtCommonShares', '1000');
+      await fillInput(page, '#txtCommonPar', '1.0000');
+      await fillInput(page, '#txtPreferredShares', '500');
+      await fillInput(page, '#txtPreferredPar', '2.0000');
+    }
 
-    // Click the "Next >>" button
-await clickContinueAndWait(); 
-    // Close the browser
-  
-    // Optional: Add a delay before closing the browser to see the result
-  
+    const commonSharesValue = await page.evaluate(() => document.querySelector('#txtCommonShares').value);
+    if (!commonSharesValue || commonSharesValue === '0') {
+      throw new Error("Number of Common Shares must be greater than 0.");
+    }
 
+    const commonParValue = await page.evaluate(() => document.querySelector('#txtCommonPar').value);
+    if (!commonParValue || parseFloat(commonParValue.replace(/[^0-9.-]+/g,"")) <= 0) {
+      throw new Error("Common Par Value must be a positive number.");
+    }
+
+    await randomSleep(10000, 40000);
+
+    await page.evaluate(() => {
+      const continueButton = document.getElementById('ContinueButton');
+      continueButton.scrollIntoView();
+      continueButton.click();
+    });
+
+    // await randomSleep(100, 300000);
     console.log('Form automation completed');
+
+   
+
+      let parts="Alex E Englard".split(" ");
+
+
+    await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
+    await page.type('#txtFirstName', parts[0]);
+    await page.type('input[name="ctl00$MainContent$ucRA$txtMiddleName"]', parts[1], { delay: 100 });
+    await page.type('input[name="ctl00$MainContent$ucRA$txtLastName"]',parts[2], { delay: 100 });
+    await page.type('input[name="ctl00$MainContent$ucRA$txtAddr1"]', "507-B Amnora Chambers", { delay: 100 });
+    await page.type('input[name="ctl00$MainContent$ucRA$txtAddr2"]', "Amnora Mall", { delay: 100 });
+    await page.type('input[name="ctl00$MainContent$ucRA$txtCity"]',"Albany", { delay: 100 });
+    await page.keyboard.press('Tab'); // Trigger any onchange events
+
+// Wait for the postal code popup to appear
+// await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
+
+
+// await page.evaluate(() => {
+// const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
+// if (postalCodeItems.length > 0) {
+// postalCodeItems[0].click();
+// }
+// });
+
+// await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
+
+// await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
+
+await page.evaluate(() => {
+AgentChanged();
+SetPostalCode(); 
+});
+
+// await randomSleep(8000,1200); 
+
+
+
+    await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', "+(555)123-456789", { delay: 100 });
+    await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', "info@vstate.com", { delay: 100 });
+
+    await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
+    await page.click('#ContinueButton')
+await page.waitForSelector('#ContinueButton', { visible: true, timeout: 60000 });
+
+await randomSleep(10000,30000);
+
+await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.scrollIntoView();
+continueButton.click(); 
+});
+
+const isButtonEnabled = await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+});
+
+if (isButtonEnabled) {
+console.log("Continue button is enabled. Attempting to click...");
+
+await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.click();
+});
+
+}
+const errorSelector = '#lblErrorMessage';
+let errorOccurred = false;
+try {
+await page.waitForSelector(errorSelector, { visible: true, timeout: 3000 }); 
+const errorMessage = await page.$eval(errorSelector, el => el.textContent);
+console.log('Error detected:', errorMessage);
+errorOccurred = true;
+
+
+
+
+} catch (err) {
+console.log('No error message detected, proceeding...');
+}
+if(errorOccurred){
+
+await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+if (isButtonEnabled) {
+console.log("Continue button is enabled. Attempting to click...");
+await page.waitForSelector(
+
+'#ContinueButton',{ visible: true, timeout: 3000 }) ;
+await page.evaluate(() => {
+const continueButton = document.getElementById('#ContinueButton');
+continueButton.click();
+randomSleep(80000, 1200000);
+
+//   // Fill in phone and email details
+//    page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
+//  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+
+// Check the consent checkbox
+page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
+
+// Scroll to and attempt to click the "Continue" button
+page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.scrollIntoView();
+});
+
+// Ensure the button is enabled and clickable
+const isButtonEnabled =  page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+});
+
+if (isButtonEnabled) {
+console.log("Continue button is enabled. Attempting to click...");
+
+// Click the button using `evaluate` to ensure it’s triggered within the page context
+page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.click();
+});
+
+// Wait for any navigation or change after clicking the button
+page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+} else {
+console.log("Continue button is not enabled or not clickable.");
+}
+
+// Check if an error message is displayed after clicking the button
+const errorSelector = '#lblErrorMessage';
+let errorOccurred = false;
+try {
+page.waitForSelector(errorSelector, { visible: true, timeout: 3000 });
+const errorMessage =  page.$eval(errorSelector, el => el.textContent);
+console.log('Error detected:', errorMessage);
+errorOccurred = true;
+} catch (err) {
+console.log('No error message detected, proceeding...');
+}
+
+// Handle the case where the error occurred
+if (errorOccurred) {
+console.log("An error occurred, trying to proceed again...");
+
+// Try to click the "Continue" button again if error is detected
+page.waitForSelector('#ContinueButton', { visible: true, timeout: 60000 });
+const retryButtonEnabled =  page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+});
+
+if (retryButtonEnabled) {
+console.log("Retrying to click the Continue button...");
+page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.click();
+});
+
+// Wait for the page to transition after the retry
+page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+} else {
+console.log("Retry failed, the Continue button is still not clickable.");
+}
+}
+
+
+});
+
+}
+
+console.log("Clicked Continue after error.");
+
+  
+}
 
   } catch (error) {
     console.error('An error occurred:', error);
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (browser) await browser.close();
   }
 })();
 
 async function randomSleep(min = 1000, max = 2000) {
   const sleepTime = Math.floor(Math.random() * (max - min + 1)) + min;
   await new Promise(resolve => setTimeout(resolve, sleepTime));
+}
+
+async function selectOptionByText(page, selector, visibleText) {
+  await page.evaluate((selector, visibleText) => {
+    const select = document.querySelector(selector);
+    const option = Array.from(select.options).find(opt => opt.text.trim() === visibleText); 
+    if (option) {
+      select.value = option.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, selector, visibleText);
+}
+
+async function fillInput(page, selector, value) {
+  await page.evaluate((selector, value) => {
+    const input = document.querySelector(selector);
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, selector, value);
 }

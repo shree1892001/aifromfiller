@@ -261,7 +261,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
           
             await adjustViewport(page);
           
-            if(json.EntityType == 'LLC'){
+            if(data.orderShortName == 'LLC'){
                 await page.evaluate(() => {
                     const dropdown = document.querySelector('#MainContent_slctBusType');
                     const options = Array.from(dropdown.options);
@@ -677,349 +677,451 @@ try {
 
         
         else if(data.orderShortName=="CORP"){
-            await retry(async () => {
-
-                try {
-                  console.log("Navigating to the Landing page...");
-  
-  
-                  await page.goto(jsonData.State.stateUrl, {
-                    waitUntil: 'networkidle0',
-                    timeout: 60000
-                  });
-                  console.log('Landing Page Loaded');
-                } catch (error) {
-                  console.error("Error navigating to the Landing page:", error.message);
-                  throw new Error("Navigation to the Landing page failed.");
-                }
-              }, 5, page);
-            
-              await randomSleep(3000, 5000);
-              await performEventsonLandingPage(page);
-            
-              await adjustViewport(page);
-            
-              console.log("Waiting for the list to appear...");
-            
-              async function performEventsonLandingPage(page) {
-                try {
-                  console.log("Attempting to interact with the landing page...");
-            
-                  await page.waitForSelector('form', { visible: true, timeout: 120000 });
-                  console.log("Form found.");
-            
-                  const checkboxExists = await page.evaluate(() => {
-                    const checkbox = document.querySelector('input[name="Disclaimer"]');
-                    console.log("Checkbox found:", !!checkbox);
-                    return !!checkbox;
-                  });
-            
-                  if (!checkboxExists) {
-                    throw new Error("Checkbox not found.");
-                  }
-            
-                  await page.click('input[name="Disclaimer"]');
-                  console.log("Disclaimer checkbox checked.");
-            
-                  const submitButtonExists = await page.evaluate(() => {
-                    const submitButton = document.querySelector('input[name="submit"]');
-                    console.log("Submit button found:", !!submitButton);
-                    return !!submitButton;
-                  });
-            
-                  if (!submitButtonExists) {
-                    throw new Error("Submit button not found.");
-                  }
-            
-                  await page.click('input[name="submit"]');
-                  console.log("Submit button clicked.");
-            
-                  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-                  console.log('Form submission successful.');
-            
-                } catch (e) {
-                  console.error("Form submission failed:", e.message);
-                  return { status: 'error', message: e.message };
-                }
-              }
-            
-              await adjustViewport(page);
-            
-              console.log("Next step completed and preview loaded.");
-              await randomSleep(18000, 22000);
-            
-              await page.evaluate(() => {
-                document.querySelector('input[name="filing_type"]').value = 'LLC';
-                document.querySelector('input[name="track_number"]').value = '100435715291';
-                document.querySelector('input[name="menu_function"]').value = 'ADD';
-              });
-            
-              if (data.effectiveDate) {
-                await page.type('#eff_date_mm', data.effectiveDate.month);
-                await randomSleep(1000, 3000);
-                await page.type('#eff_date_dd', data.effectiveDate.day);
-                await randomSleep(1000, 3000);
-                await page.type('#eff_date_yyyy', data.effectiveDate.year);
-                await randomSleep(1000, 3000);
-              }
-            
-              if (data.certificateOfStatus) {
-                await page.click('#cos_num_flag');
-                await randomSleep(1000, 3000);
-              }
-              if (data.certifiedCopy) {
-                await page.click('#cert_num_flag');
-                await randomSleep(1000, 3000);
-              }
-              try{
-              let legalName=data.llcName; 
-
-
-              if(legalName.includes("Corp") || legalName.includes("Inc.") || legalName.includes("Incorporated")){
-
-            
-              await page.type('#corp_name', legalName);
-
-              }else {
-
-                throw new Error("Name of the comapny is invalid it should end with Corp / Inc. / Incorporated")
-              }
-              await randomSleep(1000, 3000);
-              return { success: true, message: "Name added successfully" };
-
-            }catch(e){
-                let errorResponse = {
-                    success: false,
-                    error: e.message
-                };
-                if(e.message.includes("Name of entity is invalid")){
-                    errorResponse.error=e.message; 
-                }
-
-            }
+          await page.evaluate(() => {
+            const dropdown = document.querySelector('#MainContent_slctBusType');
+            const options = Array.from(dropdown.options);
+            const optionToSelect = options.find(option => option.text.includes('Profit Corporation (Domestic)'));
+            if (optionToSelect) {
+              dropdown.value = optionToSelect.value;
+              dropdown.text=optionToSelect.text; 
+      
+              dropdown.dispatchEvent(new Event('change', { bubbles: true })); // Trigger onchange event
+      
               
-            
-              await page.type('#princ_addr1', data.principalPlace.address);
-              await randomSleep(1000, 3000);
-              await page.type('#princ_addr2', data.principalPlace.suite);
-              await randomSleep(1000, 3000);
-              await page.type('#princ_city', data.principalPlace.city);
-              await randomSleep(1000, 3000);
-              await page.type('#princ_st', data.principalPlace.state);
-              await randomSleep(1000, 3000);
-              await page.type('#princ_zip', data.principalPlace.zip);
-              await randomSleep(1000, 3000);
-              await page.type('#princ_cntry', data.principalPlace.country);
-              await randomSleep(1000, 3000);
-            
-              if (data.mailingAddressSameAsPrincipal) {
-                await page.click('#same_addr_flag');
-                await randomSleep(1000, 3000);
-              } else {
-                await page.type('#mail_addr1', data.mailingAddress.address);
-                await randomSleep(1000, 3000);
-                await page.type('#mail_addr2', data.mailingAddress.suite);
-                await randomSleep(1000, 3000);
-                await page.type('#mail_city', data.mailingAddress.city);
-                await randomSleep(1000, 3000);
-                await page.type('#mail_st', data.mailingAddress.state);
-                await randomSleep(1000, 3000);
-                await page.type('#mail_zip', data.mailingAddress.zip);
-                await randomSleep(1000, 3000);
-                await page.type('#mail_cntry', data.mailingAddress.country);
-                await randomSleep(1000, 3000);
-              }
-            
-              if (data.Registered_Agent.Name.lastName) {
-                await page.type('#ra_name_last_name', data.Registered_Agent.Name.lastName);
-                await randomSleep(1000, 3000);
-                await page.type('#ra_name_first_name', data.Registered_Agent.Name.firstName);
-                await randomSleep(1000, 3000);
-                await page.type('#ra_name_m_name', data.Registered_Agent.Name.initial);
-                await randomSleep(1000, 3000);
-                await page.type('#ra_name_title_name', data.Registered_Agent.Name.title);
-                await randomSleep(1000, 3000);
-                await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
-                await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
-                await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-                await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+            }
+
+          });
+          await Promise.race([
+            page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
+            page.waitForSelector('#txtName', { visible: true, timeout: 60000 })
+          ]);
+          await page.evaluate(() => {
+            __doPostBack('ctl00$MainContent$slctBusType', '');
+        });
+        await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+        await page.click('#MainContent_chkAgree');
+        await page.click('#MainContent_ContinueButton');
+        await Promise.race([
+            page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
+            page.waitForSelector('#txtName', { visible: true, timeout: 60000 })
+          ]);
+          await page.waitForSelector("#txtName",{ visible: true, timeout: 60000 })
+          await page.evaluate(() => {
+            const inputElement = document.querySelector('#txtName');
+            inputElement.value = data.Payload.Name.CD_Legal_Name;
+            inputElement.dispatchEvent(new Event('input', { bubbles: true })); 
+            inputElement.dispatchEvent(new Event('change', { bubbles: true })); 
+        });
+        await page.type('#txtName', data.Payload.Name.CD_Legal_Name);
+        await page.waitForSelector("#txtNameConfirm",{ visible: true, timeout: 60000 });
+        await page.type('#txtNameConfirm', data.Payload.Name.CD_Legal_Name);
+
+        await page.evaluate(() => {
+          const continueButton = document.getElementById('ContinueButton');
+          continueButton.scrollIntoView();
+          continueButton.click(); // Trigger a click event on the continue button
+        });
+        await page.waitForSelector("#ddlDuration", { visible: true, timeout: 18000 });
+        await selectOptionByText(page, '#ddlDuration',data.Payload.Period_of_Duration );
+      
+        if(data.Payload.Date.DelayedEffectiveDate){
+             await randomSleep(4000,5000);
+
+             await page.waitForSelector("#textDelayedDate"); 
+             page.tyoe('#texyDelayedDate',data.Payload.Date.DelayedEffectiveDate);
+
+
+
+
+        }else{
+         await page.waitForSelector("ddlShareClass",{visible:true,timeout:18000});
+
+
+        }
+
+        async function selectOptionByText(page, selector, visibleText) {
+          await page.evaluate((selector, visibleText) => {
+            const select = document.querySelector(selector);
+            const option = Array.from(select.options).find(opt => opt.text.trim() === visibleText); 
+            if (option) {
+              select.value = option.value;
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }, selector, visibleText);
+        }
+
+        async function fillInput(page, selector, value) {
+          await page.evaluate((selector, value) => {
+            const input = document.querySelector(selector);
+            input.value = value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }, selector, value);
+        }
+        await page.waitForSelector("#ddlShareClass",{visible:true,timeout:18000});
+        await selectOptionByText(page, '#ddlShareClass', data.Payload.Class_of_Shares);
+        const ShareClassValue = await page.evaluate(() => document.querySelector('#ddlShareClass').value);
+        if(ShareClassValue === '0'){
+          throw new Error("Class of Share is not selected"); 
+
+        }
+
+        await page.evaluate(() => {
+
+          ['#txtCommonShares','#txtCommonPar', '#txtPreferredShares', '#txtPreferredPar'].forEach(selector =>{
+            const input=document.querySelector(selector); 
+            if(input) input.value = '' ; 
+          });
+        })
+        if(data.Payload.Class_of_Shares === 'Common'){
+          await page.waitForSelector('#plcCommonStock', { visible: true });
+          await fillInput(page, '#txtCommonShares', data.Payload.Stock_Information.SI_No_Of_Shares);
+          await fillInput(page, '#txtCommonPar', data.Payload.Stock_Information.SI_Share_Par_Value);
+
+        }else if(data.Payload.Class_of_Shares === 'Preferred'){
+          await page.waitForSelector('#plcPreferredStock', { visible: true });
+          await fillInput(page, '#txtPreferredShares', data.Payload.Stock_Information.PF_No_Of_Shares);
+          await fillInput(page, '#txtPreferredPar', data.Payload.Stock_Information.PF_Share_Par_Value);
+        }
+        else{
+          await page.waitForSelector('#txtPreferredShares',{visible:"true",timeout: 1000}); 
+          await fillInput(page, '#txtCommonShares', data.Payload.Stock_Information.SI_No_Of_Shares);
+          await fillInput(page, '#txtCommonPar', data.Payload.Stock_Information.SI_Share_Par_Value);
+          await fillInput(page, '#txtPreferredShares', data.Payload.Stock_Information.PF_No_Of_Shares);
+          await fillInput(page, '#txtPreferredPar', data.Payload.Stock_Information.PF_Share_Par_Value);
+
+        }
+
+        await page.waitForSelector('#ContinueButton');
+        await page.evaluate(() => {
+          const continueButton = document.getElementById('ContinueButton');
+          continueButton.scrollIntoView();
+          continueButton.click();
+        });
+
+       
+          console.log('Clicked ContinueButton');
+
+          if(data.Payload.Registered_Agent){
+            let parts=data.Payload.Registered_Agent.RA_Name.split(" ");
+
+
+          await page.waitForSelector('#txtFirstName', { visible: true, timeout: 180000 });
+          await page.type('#txtFirstName', parts[0]);
+          await page.type('input[name="ctl00$MainContent$ucRA$txtMiddleName"]', parts[1], { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtLastName"]',parts[2], { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtAddr1"]', data.Payload.Registered_Agent.Address.RA_Address_Line1, { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtAddr2"]', data.Payload.Registered_Agent.Address.RA_Address_Line2, { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtCity"]', data.Payload.Registered_Agent.Address.RA_City, { delay: 100 });
+          await page.keyboard.press('Tab'); // Trigger any onchange events
+
+// Wait for the postal code popup to appear
+await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { visible: true });
+
+
+await page.evaluate(() => {
+const postalCodeItems = document.querySelectorAll('#ui-id-1 .postalCodeListItem');
+if (postalCodeItems.length > 0) {
+postalCodeItems[0].click();
+}
+});
+
+await page.waitForSelector('.ui-dialog[aria-describedby="ui-id-1"]', { hidden: true });
+
+await page.waitForFunction(() => document.querySelector('#txtPostal').value !== '');
+
+await page.evaluate(() => {
+AgentChanged();
+SetPostalCode(); 
+});
+
+await randomSleep(80000,1200000); 
+
+
+
+          await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+
+          await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
+          await page.click('#ContinueButton')
+await page.waitForSelector('#ContinueButton', { visible: true, timeout: 60000 });
+
+await randomSleep(10000,30000);
+
+await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.scrollIntoView();
+continueButton.click(); 
+});
+
+const isButtonEnabled = await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+});
+
+if (isButtonEnabled) {
+console.log("Continue button is enabled. Attempting to click...");
+
+await page.evaluate(() => {
+const continueButton = document.querySelector('#ContinueButton');
+continueButton.click();
+});
+
+}
+const errorSelector = '#lblErrorMessage';
+let errorOccurred = false;
+try {
+await page.waitForSelector(errorSelector, { visible: true, timeout: 3000 }); 
+const errorMessage = await page.$eval(errorSelector, el => el.textContent);
+console.log('Error detected:', errorMessage);
+errorOccurred = true;
+
+
+
+
+} catch (err) {
+console.log('No error message detected, proceeding...');
+}
+if(errorOccurred){
+
+await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+if (isButtonEnabled) {
+console.log("Continue button is enabled. Attempting to click...");
+await page.waitForSelector(
+
+'#ContinueButton',{ visible: true, timeout: 3000 }) ;
+await page.evaluate(() => {
+const continueButton = document.getElementById('#ContinueButton');
+continueButton.click();
+randomSleep(80000, 1200000);
+
+//   // Fill in phone and email details
+//    page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
+//  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+
+// Check the consent checkbox
+ page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
+
+// Scroll to and attempt to click the "Continue" button
+ page.evaluate(() => {
+  const continueButton = document.querySelector('#ContinueButton');
+  continueButton.scrollIntoView();
+});
+
+// Ensure the button is enabled and clickable
+const isButtonEnabled =  page.evaluate(() => {
+  const continueButton = document.querySelector('#ContinueButton');
+  return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+});
+
+if (isButtonEnabled) {
+  console.log("Continue button is enabled. Attempting to click...");
   
-              }
-              else if(data.Registered_Agent.Name.Corp_Name){
-                    await page.type('#ra_name_corp_name',data.Registered_Agent.Name.Corp_Name)
-                    await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
-                    await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
-                    await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-                    await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+  // Click the button using `evaluate` to ensure it’s triggered within the page context
+   page.evaluate(() => {
+    const continueButton = document.querySelector('#ContinueButton');
+    continueButton.click();
+  });
+
+  // Wait for any navigation or change after clicking the button
+   page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+} else {
+  console.log("Continue button is not enabled or not clickable.");
+}
+
+// Check if an error message is displayed after clicking the button
+const errorSelector = '#lblErrorMessage';
+let errorOccurred = false;
+try {
+   page.waitForSelector(errorSelector, { visible: true, timeout: 3000 });
+  const errorMessage =  page.$eval(errorSelector, el => el.textContent);
+  console.log('Error detected:', errorMessage);
+  errorOccurred = true;
+} catch (err) {
+  console.log('No error message detected, proceeding...');
+}
+
+// Handle the case where the error occurred
+if (errorOccurred) {
+  console.log("An error occurred, trying to proceed again...");
+
+  // Try to click the "Continue" button again if error is detected
+   page.waitForSelector('#ContinueButton', { visible: true, timeout: 60000 });
+  const retryButtonEnabled =  page.evaluate(() => {
+    const continueButton = document.querySelector('#ContinueButton');
+    return continueButton && !continueButton.disabled && continueButton.offsetParent !== null;
+  });
+
+  if (retryButtonEnabled) {
+    console.log("Retrying to click the Continue button...");
+    page.evaluate(() => {
+      const continueButton = document.querySelector('#ContinueButton');
+      continueButton.click();
+    });
+
+    // Wait for the page to transition after the retry
+    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+  } else {
+    console.log("Retry failed, the Continue button is still not clickable.");
+  }
+}
+
+
+});
+
+}
+
+console.log("Clicked Continue after error.");
+
+        }
+      }
+
+          if(data.Payload.Principal_Address){
+            const selectOption = async (selector, value) => {
+              await page.evaluate((selector, value) => {
+                const select = document.querySelector(selector);
+                const option = Array.from(select.options).find(option => option.value === value);
+                if (option) {
+                  option.selected = true;
+                  select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }, selector, value);
+            };
+
+            await page.waitForSelector("#slctCountry",{ visible: true, timeout: 180000 })    
+await selectOption('#slctCountry', data.Payload.Principal_Address.PA_Country);
+await page.type('#txtAddr1', data.Payload.Principal_Address.PA_Address_Line1);
+await page.type('#txtAddr2',data.Payload.Principal_Address.PA_Address_Line2 );
+
+await page.type('#txtCity', data.Payload.Principal_Address.PA_City);
+await page.type('#txtState',data.Payload.Principal_Address.PA_State);
+// await page.type('#txtPostal', data.Payload.Principal_Address.PA_Postal_Code);
+await page.evaluate((data) => {
+// Set the value of the phone number field directly
+document.getElementById('txtPostal').value =data.Payload.Principal_Address.PA_Postal_Code;
+}, data);
+// await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
+await page.evaluate((data) => {
+// Set the value of the phone number field directly
+document.getElementById('txtPhone').value =data.Payload.Principal_Address.PA_Contact_No;
+}, data);
+await page.type('#txtEmail', data.Payload.Principal_Address.PA_Email);
+
+          }
+          if(data.Payload.Shipping_Address){
+            const selectOption = async (selector, value) => {
+              await page.evaluate((selector, value) => {
+                const select = document.querySelector(selector);
+                const option = Array.from(select.options).find(option => option.value === value);
+                if (option) {
+                  option.selected = true;
+                  select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }, selector, value);
+            };
+
+            await page.waitForSelector("#slctCountry",{ visible: true, timeout: 180000 })    
+await selectOption('#slctCountry', data.Payload.Principal_Address.PA_Country);
+await page.type('#txtAddr1Mail', data.Payload.Principal_Address.PA_Address_Line1);
+await page.type('#txtAddr2Mail',data.Payload.Principal_Address.PA_Address_Line2 );
+
+await page.type('#txtCityMail', data.Payload.Principal_Address.PA_City);
+await page.type('#txtStateMail',data.Payload.Principal_Address.PA_State);
+// await page.type('#txtPostalMail', data.Payload.Principal_Address.PA_Postal_Code);
+await page.evaluate((data) => {
+document.getElementById('txtPostalMail').value =data.Payload.Principal_Address.PA_Postal_Code;
+}, data);
+// await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
+
+await page.evaluate(() => {
+const selectElement = document.querySelector('#slctCountry');
+selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+__doPostBack('ctl00$MainContent$ucAddress$slctCountry', ''); // Trigger postback manually if necessary
+});
+
+
+await page.waitForSelector('#ContinueButton'); 
+await page.evaluate(() => {
+const nextButton = document.querySelector('#ContinueButton');
+if (nextButton) {
+nextButton.dispatchEvent(new Event('click', { bubbles: true }));
+__doPostBack('ctl00$MainContent$ContinueButton', ''); // Trigger postback manually if necessary
+}
+});
+
+          }
+
+  if(data.Payload.Incorporator_Information){
+
+    let Name= data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name;
+
+    let parts=Name.split(" "); 
+
+
+      await page.waitForSelector("#txtFirstName");
+      await page.type('#txtFirstName', parts[1],{ delay: 100 });
+      await page.waitForSelector("#txtMiddletName");
+
+      await page.type('#txtMiddleName', parts[1],{ delay: 100 });
+      await page.waitForSelector("#txtLastName");
+
+      await page.type('#txtLastName', parts[2], { delay: 100 });
+      await page.waitForSelector("#txtOrgName");
+
+      await page.type('#txtOrgName', data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name, { delay: 100 });
+      await page.waitForSelector("#txtMail1");
+      const combinedAddr = `${data.Payload.Incorporator_Information.Address.Inc_Address_Line1}, ${data.Payload.Incorporator_Information.Address.Inc_City}, ${data.Payload.Incorporator_Information.Address.Inc_State}, ${data.Payload.Incorporator_Information.Address.Inc_Postal_Code}`;
+      await page.waitForSelector('#txtMail1');
+      // await page.type('#txtMail1', data.Payload.Organizer_Information.Organizer_Details.Org_Name, { delay: 100 });
+      await page.evaluate((address) => {
+        const input = document.querySelector('#txtMail1');
+        input.focus(); // Triggers the onfocus event and calls input.select()
+        input.value = address; // Set the value of the input field to the combined address
+    }, combinedAddr);
+
+    await page.waitForSelector('#ContinueButton', { visible: true });
+
+try {
+
+await page.click('#ContinueButton');
+
+await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+await page.evaluate(() => {
+const nextButton = document.querySelector('#ContinueButton');
+if (nextButton) {
+    nextButton.click(); 
+    __doPostBack('ctl00$MainContent$ContinueButton', '');
+
+}
+});
+
+await page.waitForSelector("#txtArticleDetail",{visible :true ,timeout : 10000});
+
+if(data.Payload.Additional_Articles){
+  await page.type("#txtArticleDetail", data.Payload.Additional_Articles); 
+
+}
+else{
+  await page.evaluate(() => {
+    const continueButton = document.querySelector('#ContinueButton');
+    continueButton.click();
+    });
+    
+
+}
+await page.waitForSelector("#ContinueButton");
+await page.evaluate(() => {
+  const continueButton = document.querySelector('#ContinueButton');
+  continueButton.click();
+  });
   
-  
-  
-  
-              }
-              await page.type('#ra_signautre',data.Registered_Agent.Name.LastName + data.Registered_Agent.Name.FirstName); 
-  
-            
-              if (data.Payload.Registered_Agent.Purpose) {
-                await page.type('#purpose',data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
-                await randomSleep(1000, 3000);
-              }
-              if(data.Correspondance.Name){
-  
-                  await page.type('#ret_name',data.Correspondance.Name);
-                  await page.type('#ret_email_addr',data.Correspondance.Email);
-                  await page.type('#email_addr_verify',data.Correspondance.Email);
-              }
-              await page.type('#signature',data.Correspondance.Name);
-              if(data.Manager.Name.FirstName){
-              await page.type('#off1_name_title', data.Manager.Name.Title1);
-              await page.type('#off1_name_last_name', data.Manager.Name.LastName1);
-              await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
-            await page.type('#off1_name_m_name', data.Manager.Name.MidInitial1);
-             await page.type('#off1_name_title_name', data.Manager.Name.Name_Title1);
-  
-             await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
-             await page.type('#off1_name_city', data.Manager.Address.City1);
-             await page.type('#off1_name_st', data.Manager.Address.State1);
-             await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
-             await page.type('#off1_name_cntry', data.Manager.Address.Country1)
-  
-             //second manager
-             await page.type('#off2_name_title', data.Manager.Name.Title2);
-             await page.type('#off2_name_last_name', data.Manager.Name.LastName2);
-             await page.type('#off2_name_first_name', data.Manager.Name.FirstName2);
-           await page.type('#off2_name_m_name', data.Manager.Name.MidInitial2);
-            await page.type('#off2_name_title_name', data.Manager.Name.Name_Title2);
-  
-  
-            await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
-            await page.type('#off2_name_city', data.Manager.Address.City2);
-            await page.type('#off2_name_st', data.Manager.Address.State2);
-            await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
-            await page.type('#off2_name_cntry', data.Manager.Address.Country2)
-            //third manager
-            await page.type('#off3_name_title', data.Manager.Name.Title3);
-            await page.type('#off3_name_last_name', data.Manager.Name.LastName33);
-            await page.type('#off3_name_first_name', data.Manager.Name.FirstName3);
-          await page.type('#off3_name_m_name', data.Manager.Name.MidInitial3);
-           await page.type('#off3_name_title_name', data.Manager.Name.Name_Title3);
-           await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
-           await page.type('#off3_name_city', data.Manager.Address.City3);
-           await page.type('#off3_name_st', data.Manager.Address.State3);
-           await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
-           await page.type('#off3_name_cntry', data.Manager.Address.Country3)
-           //fourth
-           await page.type('#off4_name_title', data.Manager.Name.Title4);
-           await page.type('#off4_name_last_name', data.Manager.Name.LastName4);
-           await page.type('#off4_name_first_name', data.Manager.Name.FirstName4);
-         await page.type('#off4_name_m_name', data.Manager.Name.MidInitial4);
-          await page.type('#off4_name_title_name', data.Manager.Name.Name_Title4);
-  
-          await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
-          await page.type('#off4_name_city', data.Manager.Address.City4);
-          await page.type('#off4_name_st', data.Manager.Address.State4);
-          await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
-          await page.type('#off4_name_cntry', data.Manager.Address.Country4)
-          //fifth
-          await page.type('#off5_name_title', data.Manager.Name.Title5);
-          await page.type('#off5_name_last_name', data.Manager.Name.LastName5);
-          await page.type('#off5_name_first_name', data.Manager.Name.FirstName5);
-        await page.type('#off5_name_m_name', data.Manager.Name.MidInitial5);
-         await page.type('#off5_name_title_name', data.Manager.Name.Name_Title5);
-  
-         await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
-         await page.type('#off5_name_city', data.Manager.Address.City5);
-         await page.type('#off5_name_st', data.Manager.Address.State5);
-         await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
-         await page.type('#off5_name_cntry', data.Manager.Address.Country5)
-  
-         await page.type('#off6_name_title', data.Manager.Name.Title6);
-         await page.type('#off6_name_last_name', data.Manager.Name.LastName6);
-         await page.type('#off6_name_first_name', data.Manager.Name.FirstName6);
-       await page.type('#off6_name_m_name', data.Manager.Name.MidInitial6);
-        await page.type('#off6_name_title_name', data.Manager.Name.Name_Title6);
-  
-  
-        await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
-        await page.type('#off6_name_city', data.Manager.Address.City6);
-        await page.type('#off6_name_st', data.Manager.Address.State6);
-        await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
-        await page.type('#off6_name_cntry', data.Manager.Address.Country6)
-              }
-              else if(data.Manager.Name.entityName){
-  
-                  if (data.Manager.Name.entityName.length > 42) {
-                      throw new Error('Entity Name exceeds 42 characters.');
-                    }
-                    if (data.Manager.Address.streetAddress.length  > 42) {
-                      throw new Error('Street Address exceeds 42 characters.');
-                    }
-                    if (data.Manager.Address.City.length > 28) {
-                      throw new Error('City exceeds 28 characters.');
-                    }
-                    if (data.Manager.Address.State.length > 2) {
-                      throw new Error('State exceeds 2 characters.');
-                    }
-                    if (data.Manager.Address.postal_code.length > 9) {
-                      throw new Error('Zip Code exceeds 9 characters.');
-                    }
-                    if (data.Manager.Address.Country.length > 2) {
-                      throw new Error('Country exceeds 2 characters.');
-                    }
-                  
-                    // Fill in the form fields
-                    await page.type('#off1_name_corp_name', data.Manager.Name.entityName1);
-                    await page.type('#off1_name_addr1', data.Manager.Address.streetAddress1);
-                    await page.type('#off1_name_city', data.Manager.Address.City1);
-                    await page.type('#off1_name_st', data.Manager.Address.State1);
-                    await page.type('#off1_name_zip', data.Manager.Address.zipCode1);
-                    await page.type('#off1_name_cntry', data.Manager.Address.Country1);
-  
-                    await page.type('#off2_name_corp_name', data.Manager.Name.entityName2);
-                    await page.type('#off2_name_addr1', data.Manager.Address.streetAddress2);
-                    await page.type('#off2_name_city', data.Manager.Address.City2);
-                    await page.type('#off2_name_st', data.Manager.Address.State2);
-                    await page.type('#off2_name_zip', data.Manager.Address.zipCode2);
-                    await page.type('#off2_name_cntry', data.Manager.Address.Country2);
-  
-                    await page.type('#off3_name_corp_name', data.Manager.Name.entityName3);
-                    await page.type('#off3_name_addr1', data.Manager.Address.streetAddress3);
-                    await page.type('#off3_name_city', data.Manager.Address.City3);
-                    await page.type('#off3_name_st', data.Manager.Address.State3);
-                    await page.type('#off3_name_zip', data.Manager.Address.zipCode3);
-                    await page.type('#off3_name_cntry', data.Manager.Address.Country3);
-  
-                    await page.type('#off4_name_corp_name', data.Manager.Name.entityName4);
-                    await page.type('#off4_name_addr1', data.Manager.Address.streetAddress4);
-                    await page.type('#off4_name_city', data.Manager.Address.City4);
-                    await page.type('#off4_name_st', data.Manager.Address.State4);
-                    await page.type('#off4_name_zip', data.Manager.Address.zipCode4);
-                    await page.type('#off4_name_cntry', data.Manager.Address.Country4);
-  
-                    await page.type('#off5_name_corp_name', data.Manager.Name.entityName5);
-                    await page.type('#off5_name_addr1', data.Manager.Address.streetAddress5);
-                    await page.type('#off5_name_city', data.Manager.Address.City5);
-                    await page.type('#off5_name_st', data.Manager.Address.State5);
-                    await page.type('#off5_name_zip', data.Manager.Address.zipCode5);
-                    await page.type('#off5_name_cntry', data.Manager.Address.Country5);
-  
-                    await page.type('#off6_name_corp_name', data.Manager.Name.entityName6);
-                    await page.type('#off6_name_addr1', data.Manager.Address.streetAddress6);
-                    await page.type('#off6_name_city', data.Manager.Address.City6);
-                    await page.type('#off6_name_st', data.Manager.Address.State6);
-                    await page.type('#off6_name_zip', data.Manager.Address.zipCode6);
-                    await page.type('#off6_name_cntry', data.Manager.Address.Country6);
-                  
-              }
-              await page.waitForSelector('input[name="submit"]', { visible: true, timeout: 60000 });
-   
-            await page.evaluate(() => {
-                document.querySelector('input[name="submit"]').submit();
-              });
-            
-              await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
-              console.log('Form submitted successfully');
-  
-           return errorResponse;
+
+} catch (error) {
+
+console.error('Failed to click the button:', error);
+}
+}
         }
           }
 
@@ -1493,7 +1595,7 @@ try {
               await randomSleep(18000, 22000);
             
               await page.evaluate(() => {
-                document.querySelector('input[name="filing_type"]').value = 'LLC';
+                document.querySelector('input[name="filing_type"]').value = 'CORP';
                 document.querySelector('input[name="track_number"]').value = '100435715291';
                 document.querySelector('input[name="menu_function"]').value = 'ADD';
               });
@@ -1515,6 +1617,7 @@ try {
                 await page.click('#cert_num_flag');
                 await randomSleep(1000, 3000);
               }else{}
+              await page.waitForSelector('#corp_name');
               try{
               let legalName=data.Payload.Name.CD_Legal_Name; 
 
