@@ -101,6 +101,12 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
       }
+      else if(jsonData.State.stateFullDesc=='Pennsylvania'){
+        await handleNy(page,jsonData);
+
+
+      }
+      
       async function handleNJ(page,jsonData){
         await retry(async () => {
             try {
@@ -328,7 +334,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
                     };
                   
                     // Click the Continue button and wait for the page to load
-                    await clickContinueAndWait();
+                    // await clickContinueAndWait();
                   
                     // Check if we've successfully moved to the next page
                     const currentStep = await page.evaluate(() => {
@@ -342,8 +348,13 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
                 }else{
-                  await clickContinueAndWait(); 
-                
+                   
+                  await page.waitForSelector('#ContinueButton');
+                  await page.evaluate(() => {
+                    const continueButton = document.getElementById('ContinueButton');
+                    continueButton.scrollIntoView();
+                    continueButton.click();
+                  });
 
 
                 }
@@ -645,38 +656,33 @@ try {
 
         }
     });
+    if(data.Payload.Additional_Articles){
+      await page.type("#txtArticleDetail", data.Payload.Additional_Articles); 
+    
+    }
+    else{
+      await page.evaluate(() => {
+        const continueButton = document.querySelector('#ContinueButton');
+        continueButton.click();
+        });
+        
+    
+    }
+    await page.waitForSelector("#ContinueButton");
+    await page.evaluate(() => {
+      const continueButton = document.querySelector('#ContinueButton');
+      continueButton.click();
+      });
+
+      await randomSleep(10000,200000);
 
 } catch (error) {
 
     console.error('Failed to click the button:', error);
 }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
-          
-           
-            }
-
-        
-        else if(data.orderShortName=="CORP"){
+}
+else if(data.orderShortName=="CORP"){
           await page.evaluate(() => {
             const dropdown = document.querySelector('#MainContent_slctBusType');
             const options = Array.from(dropdown.options);
@@ -1365,7 +1371,7 @@ console.error('Failed to click the button:', error);
                 await page.type('#email_addr_verify',data.Payload.Organizer_Information.Organizer_Details.Org_Email);
             }
             await page.type('#signature',data.Payload.Organizer_Information.Organizer_Details.Org_Name);
-            if(data.Manager.Name.FirstName){
+            if(data.Payload.Member_Or_Manager_Name_And_Address){
             await page.type('#off1_name_title', data.Payload.Organizer_Information.Organizer_Details.Name.CA_Title);
             await page.type('#off1_name_last_name', data.Payload.Manager.Name.LastName1);
             await page.type('#off1_name_first_name', data.Manager.Name.FirstName1);
@@ -2219,6 +2225,110 @@ console.error('Failed to click the button:', error);
 
 
 
+    }else if(jsonData.State.stateFullDesc=="Pennsylvania"){
+
+      await retry(async () => {
+
+          
+        try {
+            // sendWebSocketMessage('Navigating to the login page...');
+            console.log("Navigating to the login page...");
+            // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+            const response = await page.goto(jsonData.State.stateUrl, {
+
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
+            log('Login page loaded.');
+        } catch (error) {
+            console.error("Error navigating to the login page:", error.message);
+            throw new Error("Navigation to the login page failed.");
+        }
+    },5,page);
+    await randomSleep(1000,2000); 
+    try {
+      await performLogin(page, jsonData);
+  } catch (error) {
+      console.error("Error waiting for the preview page:", error.message);
+      throw new Error("Invalid Login Credentials");
+  }
+  await adjustViewport(page);
+  await page.waitForSelector('#actionLinks', { visible: true}); 
+           try {
+            // Use page.evaluate to click the link in the context of the page
+            await page.evaluate(() => {
+              const firstLink = document.querySelector('a[href="Home/QuickAction/084c236e-4a54-4f94-8a2f-50fdc2c840f4');
+              if (firstLink) {
+                firstLink.scrollIntoView(); // Ensure the link is in view
+                firstLink.click();
+              } else {
+                throw new Error('No links found on the page');
+              }
+            });
+            console.log('Clicked the first link');
+            
+            // Optionally, wait for navigation or additional actions
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+            console.log('Redirected to the first link\'s destination');
+          } catch (error) {
+            console.error('Error during link click operation:', error.message);
+          }
+          let secondLinkUrl;
+        if (jsonData.EntityType.orderShortName === 'LLC') {
+            console.log("Get the Url for filing the LLC ");
+            try {
+               await page.waitForSelector('a[aria-label*="Limited Liability Company (LLC) external"]')
+                secondLinkUrl = await page.evaluate(() => {
+                    const secondLink = document.querySelector('a[aria-label*="Limited Liability Company (LLC) external"]');
+                    return secondLink ? secondLink.getAttribute('href') : null;
+                });
+            } catch (error) {
+                console.error("Error getting the second link URL:", error.message);
+                throw new Error("Failed to get the second link URL for LLC.");
+            }
+        } else if (jsonData.EntityType.orderShortName === 'CORP') {
+            console.log("Getting the URL for Filing the CORP...");
+            try {
+              await page.waitForSelector('a[aria-label*="For Profit Corporation external"]')
+
+                secondLinkUrl = await page.evaluate(() => {
+                    const secondLink = document.querySelector('a[aria-label*="For Profit Corporation external"]');
+                    secondLink.scrollIntoView();
+                    return secondLink ? secondLink.getAttribute('href') : null;
+                });
+            } catch (error) {
+                console.error("Error getting the second link URL:", error.message);
+                throw new Error("Failed to get the second link URL for Corp.");
+            }
+        }
+
+        await randomSleep(3000, 5000);
+
+        if (!secondLinkUrl) {
+            throw new Error("Couldn't find the Articles of Organization URL.");
+        }
+
+        console.log("Opening the Articles of Organization...");
+        try {
+            await page.goto(new URL(secondLinkUrl, page.url()).href, { waitUntil: 'networkidle0' });
+        } catch (error) {
+            console.error("Error navigating to the Articles of Organization page:", error.message);
+            throw new Error("Failed to navigate to the Articles of Organization page.");
+        }
+
+        console.log("Articles of Organization page loaded.");
+        await randomSleep(3000, 5000);
+
+        let entityType = jsonData.EntityType.orderShortName.trim().toUpperCase();
+        if (entityType === 'LLC') {
+            await addDataLLC(page, jsonData);
+        } else if (entityType === 'CORP') {
+            await addDataCorp(page, jsonData);
+        }
+
+
+
+
     }
   }
   
@@ -2267,9 +2377,13 @@ async function performLogin(page, jsonData) {
    if(jsonData.State.stateFullDesc=="New-York"){
     try {
         console.log("Attempting to login...");
+        ;
+
 
         // Wait for the form to be visible
         await page.waitForSelector('form', { visible: true, timeout: 120000 });
+
+
 
         // Fill in the login form and handle the submit
         await page.evaluate((jsonData) => {
@@ -2388,7 +2502,67 @@ async function performLogin(page, jsonData) {
   console.error("Login failed:", error.message);
   throw error; // Re-throw the error for higher-level handling
 }
+  }else if(jsonData.State.stateFullDesc === "Pennsylvania"){
+    try {
+      console.log("Attempting to login...");
+
+      // Wait for the form to be visible
+      await page.waitForSelector('.btn.btn-default.login-link', { visible: true, timeout: 120000 })
+      await page.click('.btn.btn-default.login-link');
+
+      // Fill in the login form and handle the submit
+
+      await page.waitForSelector('input[name="Username"]'); 
+      await page.evaluate((jsonData) => {
+          const usernameField = document.querySelector('input[name="Username"]');
+          const passwordField = document.querySelector('input[name="Password"]');
+          const submitButton = document.querySelector('button.btn-primary'); // Use the ID of the submit button
+
+          if (!usernameField || !passwordField || !submitButton) {
+              throw new Error("Couldn't find login elements");
+          }
+
+          // Set the username and password
+          usernameField.value = jsonData.State.filingWebsiteUsername;
+          passwordField.value = jsonData.State.filingWebsitePassword;
+
+          // Check if `apex` object is available
+          if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
+              // Use apex.submit if available
+              apex.submit({ request: 'LOGIN', validate: true });
+          } else if (submitButton) {
+              // Fallback to clicking the button if `apex.submit` is not available
+              submitButton.click();
+          } else {
+              throw new Error("Submit method or button not found");
+          }
+
+      }, jsonData);
+
+      // Wait for navigation or some indication that login succeeded
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+      // Check for error messages after navigation
+      const alertSelector = '#t_Alert_Notification';
+      const errorMessage = 'Invalid Login Credentials';
+      
+      const alertVisible = await page.evaluate((alertSelector) => {
+          const alert = document.querySelector(alertSelector);
+          return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
+      }, alertSelector);
+
+      if (alertVisible) {
+          console.error("Login failed: Invalid Login Credentials");
+          throw new Error("Login failed: Invalid Login Credentials");
+      }
+
+      console.log('Login successful.');
+
+  } catch (error) {
+      console.error("Login failed:", error.message);
+      throw error
   }
+}
 }
 
 
@@ -2598,6 +2772,118 @@ businessDesignator.forEach(designator => {
           await fillNextPage(page, data);
   
           return { success: true, message: "Name added successfully" };
+  
+  
+      } catch (e) {
+          // Specific error handling
+          let errorResponse = {
+              success: false,
+              error: e.message
+          };
+          if (e.message.includes('Execution context was destroyed')) {
+              errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+          } else if (e.message.includes('Name is Invalid')) {
+              errorResponse.error = e.message;
+          } else if (e.message.startsWith('DuplicateEntityError:')) {
+              errorResponse.error = "Duplicate entity found: " + e.message;
+              try {
+                  const entityDetails = JSON.parse(e.message.split('DuplicateEntityError: ')[1]);
+                  errorResponse.entityDetails = entityDetails;
+              } catch (parseError) {
+                  console.error("Failed to parse entity details:", parseError);
+              }
+          }
+  
+          console.error("An error occurred:", errorResponse.error);
+          return errorResponse;
+          // Re-throw the error if necessary
+      }
+
+       }else if(data.State.stateFullDesc=="Pennsylvania"){
+             
+        try {
+          await page.waitForSelector('#wizard-body-scroll-container');
+
+          async function selectOptionByText(page, selector, visibleText) {
+            await page.evaluate((selector, visibleText) => {
+              const select = document.querySelector(selector);
+              const option = Array.from(select.options).find(opt => opt.text.trim() === visibleText); 
+              if (option) {
+                select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }, selector, visibleText);
+          }
+          await page.waitForSelector("select[name='FILING_SUBTYPE_ID']");
+         await selectOptionByText('select[name="FILING_SUBTYPE_ID"]',data.Payload.EntityType); 
+         await page.waitForSelector('input[name="BUSINESS_ACTIVITY"]');
+         await page.type('input[name="BUSINESS_ACTIVITY"]', data.Payload.Activity.Bussiness_Activity);
+
+         await page.waitForSelector('input[name="FIRST_NAME"]',{visible :true , timeout:10000});
+         let Name= data.Payload.Organizer_Information.Organizer_Details.Org_Name.split(" ");
+         await page.type('input[name="FIRST_NAME"]', Name[0]);
+         await page.waitForSelector('input[name="LAST_NAME"]',{visible :true , timeout:10000});
+         await page.type('input[name="LAST_NAME"]',Name[1]);
+         await page.waitForSelector('input[name="ADDR1"]');
+
+         await page.type('input[name="ADDR1"]',data.Payload.Principal_Address.PA_Address_Line1); 
+         await page.waitForSelector('input[name="CITY"]',{visible: true ,timeout:120000}); 
+         await page.type('input[name="CITY"]',data.Payload.Pricipal_Address.PA_City);
+         await page.waitForSelector('input[name="POSTAL_CODE"]',data.Payload.Address.PA_Postal_Code); 
+         await page.waitForSelector(".btn.btn-raised.btn-primary.next.toolbar-button");
+
+         await page.click("btn.btn-raised.btn-primary.next.toolbar-button");
+         
+         if(data.Payload.Registered_Agent){
+          await page.waitForSelector('input[name="RO_IS_CROP_YN"][value="N"]');
+          await page.waitForSelector('input[name="RO_IS_CROP_YN"][value="N"]'); 
+  await page.click('input[name="RO_IS_CROP_YN"][value="N"]');
+
+  // Fill in the address details using stable selectors
+  await page.type('input[name="ADDR1"]', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
+    await page.waitForSelector('input[name="CITY"]'); 
+  await page.type('input[name="CITY"]', data.Payload.Registered_Agent.RA_Address.RA_City);
+  await page.select('select[name="STATE"]', 'PA');
+  await page.waitForSelector('input[name="POSTAL_CODE"]');
+  await page.type('input[name="POSTAL_CODE"]', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
+  const dropdown= document.querySelector('[id^="field"]');
+  const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
+  if(option){
+      dropdown.value=option.value ;
+  }
+         }
+
+
+         if(data.Payload.Organizer_Information){
+          await page.waitForSelector('.btn.btn-raised.btn-primary.form-button.add-row');
+          await page.click('.btn.btn-raised.btn-primary.form-button.add-row'); 
+
+          if(data.Pyload.Organizer_Information){
+
+
+          }
+
+
+         }
+
+
+         
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
   
   
       } catch (e) {
