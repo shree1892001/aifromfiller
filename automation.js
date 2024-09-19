@@ -90,6 +90,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
             await handleWy(page,jsonData);
 
+        }else if(jsonData.State.stateFullDesc === "Nebraska"){
+              await handleFL(page,jsonData); 
         }
         else if(jsonData.State.stateFullDesc === "New-Jersey"){
 
@@ -106,6 +108,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
       }
+
+      
       
       async function handleNJ(page,jsonData){
         await retry(async () => {
@@ -1132,6 +1136,8 @@ console.error('Failed to click the button:', error);
           }
 
         async function handleFL(page, data) {
+
+          if(data.stateFullDesc == 'Florida'){
             if(data.orderShortName=='LLC'){
 
             await retry(async () => {
@@ -1714,12 +1720,34 @@ console.error('Failed to click the button:', error);
   
            return errorResponse;
         }
+        
+      }
+      else if(data.stateFullDesc=="Nebraska"){
+        await retry(async () => {
+          try {
+              // sendWebSocketMessage('Navigating to the login page...');
+              console.log("Navigating to the login page...");
+              // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+              const response = await page.goto(jsonData.State.stateUrl, {
+
+                  waitUntil: 'networkidle0',
+                  timeout: 60000
+              });
+              log('Login page loaded.');
+          } catch (error) {
+              console.error("Error navigating to the login page:", error.message);
+              throw new Error("Navigation to the login page failed.");
           }
-
-
+      },5,page);
 
             
+                 
           }
+
+
+}
+            
+          
         async function handleNy(page,jsonData){
         if(jsonData.State.stateFullDesc=="New-York"){
         await retry(async () => {
@@ -1990,32 +2018,7 @@ console.error('Failed to click the button:', error);
           await page.waitForSelector('button.btn.btn-primary.btn-lg');
 
     await page.click('button.btn.btn-primary.btn-lg');
-
-
-      
-
-
-
-
-      
-
-
-
-
-
-
-
-
-
-
-      
-     
-
-
-
-
-
-    }else if(jsonData.State.stateFullDesc=="Pennsylvania"){
+}else if(jsonData.State.stateFullDesc=="Pennsylvania"){
 
       await retry(async () => {
 
@@ -4006,6 +4009,7 @@ async function adjustViewport(page) {
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
+}
 
 
 
