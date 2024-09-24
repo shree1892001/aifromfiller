@@ -1,0 +1,10 @@
+{
+    "Delaware": {
+        "loginbutton": "a[routerlink=\"/account/login\"]",
+        "usernameField": "input[formcontrolname=\"userName\"]",
+        "passwordField": "input[formcontrolname=\"password\"]",
+        "submitButton": "button[type=\"submit\"]",
+        "alertselector": "ngb-alert",
+        "errorMessage": "You have entered an invalid user ID/ password"
+    }
+}

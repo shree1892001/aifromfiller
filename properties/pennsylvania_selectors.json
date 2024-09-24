@@ -1,0 +1,10 @@
+{
+    "Pennsylvania": {
+        "loginbutton": ".btn.btn-default.login-link",
+        "usernamefield": "input[name=\"Username\"]",
+        "passwordfield": "input[name=\"Password\"]",
+        "submitbutton": "button.btn-primary",
+        "alerselector": "#t_Alert_Notification",
+        "errorMessage": "Invalid Login Credentials"
+    }
+}

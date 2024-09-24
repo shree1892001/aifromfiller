@@ -1,0 +1,11 @@
+{
+    "New-York": {
+        "form": "form",
+        "usernameField": "input[name=\"P101_USERNAME\"]",
+        "passwordField": "input[name=\"P101_PASSWORD\"]",
+        "submitButton": "button#P101_LOGIN",
+        "alertselector": "#t_Alert_Notification",
+        "alertbody":".t-Alert-body",
+        "errorMessage": "Invalid Login Credentials"
+    }
+}

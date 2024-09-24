@@ -5,6 +5,16 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const axios = require('axios');
 const fs = require('fs');
 const cors = require('cors');
+const wvSelectors = require('./selectorWestViriginia');
+function loadSelectors(stateFullDesc) {
+  const stateFile = path.join(__dirname,'properties',  `${stateFullDesc.toLowerCase().replace(/ /g, '-')}_selectors.json`);
+  return JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+}
+
+
+
+
+
 
 const path = require('path');
 const { timeout } = require('puppeteer');
@@ -20,7 +30,7 @@ const apiEndpoint = 'http://localhost:3001/run-puppeteer'; // Adjust this if nee
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.108:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000','http://192.168.1.11:3000'],
+    origin: ['chrome-extension://kpmpcomcmochjklgamghkddpaenjojhl','http://192.168.1.4:3000','http://192.168.1.108:3001','http://localhost:3000','http://192.168.1.108:3000','http://192.168.1.108:3000','http://192.168.1.108:3001','http://192.168.1.108:3001','http://192.168.1.4:3000','http://192.168.1.11:3000'],
     methods: ['GET','POST']
 }));
 let shouldTriggerAutomation = false;
@@ -41,12 +51,7 @@ const log = (message) => {
 
 
 app.use(bodyParser.json());
-function cleanData(data) {
-    return JSON.parse(JSON.stringify(data, (key, value) => {
-        // Remove properties with undefined values
-        return value === undefined ? null : value;
-    }));
-}
+
 
 async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     let browser;
@@ -82,8 +87,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         // console.log(jsonData);
         if(jsonData.State.stateFullDesc === "New-York"){
             await handleNy(page,jsonData); 
-        }
-        else if(jsonData.State.stateFullDesc=="Florida"){
+        }else if(jsonData.State.stateFullDesc ==="West-Virginia"){
+          await  handleNy (page,jsonData); 
+     }
+        else if(jsonData.State.stateFullDesc === "Florida" || jsonData.state.stateFullDesc === "Colorado" ){
             await handleFL(page,jsonData); 
         }
         else if(jsonData.State.stateFullDesc=== "Wyoming"){
@@ -98,20 +105,42 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
           await handleNJ(page,jsonData);
 
       }
-      else if(jsonData.State.stateFullDesc=='Delaware'){
+      else if(jsonData.State.stateFullDesc === 'Delaware'){
         await handleNy(page,jsonData);
 
 
       }
-      else if(jsonData.State.stateFullDesc=='Pennsylvania'){
+      
+      else if(jsonData.State.stateFullDesc==='Pennsylvania'){
         await handleNy(page,jsonData);
 
 
       }
+      async function handlewJ(page,jsonData){
+        await retry(async () => {
+        try {
+          // sendWebSocketMessage('Navigating to the login page...');
+          console.log("Navigating to the login page...");
+          // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+          const response = await page.goto(jsonData.State.stateUrl, {
 
+              waitUntil: 'networkidle0',
+              timeout: 60000
+          });
+          log('Login page loaded.');
+      } catch (error) {
+          console.error("Error navigating to the login page:", error.message);
+          throw new Error("Navigation to the login page failed.");
+      }
+           },5,page);
+
+
+
+      }
       
       
       async function handleNJ(page,jsonData){
+
         await retry(async () => {
             try {
                 // sendWebSocketMessage('Navigating to the login page...');
@@ -210,6 +239,8 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
         }
 
     }
+  
+
 
 
           
@@ -243,7 +274,6 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
             async function performEventsonLandingPage(page) {
               try {
                 console.log("Attempting to interact with the landing page...");
-          
                 await page.waitForSelector('form', { visible: true, timeout: 120000 });
                 console.log("Form found.");
           
@@ -405,7 +435,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
   
                   await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
-                  await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+                  await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address_Address, { delay: 100 });
 
                   await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
                   await page.click('#ContinueButton')
@@ -462,7 +492,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
       //   // Fill in phone and email details
       //    page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
-      //  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+      //  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address_Address, { delay: 100 });
         
         // Check the consent checkbox
          page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
@@ -560,10 +590,10 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     
     await page.type('#txtCity', data.Payload.Principal_Address.PA_City);
     await page.type('#txtState',data.Payload.Principal_Address.PA_State);
-    // await page.type('#txtPostal', data.Payload.Principal_Address.PA_Postal_Code);
+    // await page.type('#txtPostal', data.Payload.Principal_Address.PA_Zip_Code);
     await page.evaluate((data) => {
       // Set the value of the phone number field directly
-      document.getElementById('txtPostal').value =data.Payload.Principal_Address.PA_Postal_Code;
+      document.getElementById('txtPostal').value =data.Payload.Principal_Address.PA_Zip_Code;
   }, data);
     // await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
     await page.evaluate((data) => {
@@ -592,9 +622,9 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     
     await page.type('#txtCityMail', data.Payload.Principal_Address.PA_City);
     await page.type('#txtStateMail',data.Payload.Principal_Address.PA_State);
-    // await page.type('#txtPostalMail', data.Payload.Principal_Address.PA_Postal_Code);
+    // await page.type('#txtPostalMail', data.Payload.Principal_Address.PA_Zip_Code);
     await page.evaluate((data) => {
-      document.getElementById('txtPostalMail').value =data.Payload.Principal_Address.PA_Postal_Code;
+      document.getElementById('txtPostalMail').value =data.Payload.Principal_Address.PA_Zip_Code;
   }, data);
     // await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
     
@@ -635,7 +665,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
               await page.type('#txtOrgName', data.Payload.Organizer_Information.Organizer_Details.Org_Name, { delay: 100 });
               await page.waitForSelector("#txtMail1");
-              const combinedAddr = `${data.Payload.Organizer_Information.Org_Address.Org_Address_Line1}, ${data.Payload.Organizer_Information.Org_Address.Org_City}, ${data.Payload.Organizer_Information.Org_Address.Org_State}, ${data.Payload.Organizer_Information.Org_Address.Org_Postal_Code}`;
+              const combinedAddr = `${data.Payload.Organizer_Information.Org_Address.Org_Address_Line1}, ${data.Payload.Organizer_Information.Org_Address.Org_City}, ${data.Payload.Organizer_Information.Org_Address.Org_State}, ${data.Payload.Organizer_Information.Org_Address.Org_Zip_Code}`;
               await page.waitForSelector('#txtMail1');
               // await page.type('#txtMail1', data.Payload.Organizer_Information.Organizer_Details.Org_Name, { delay: 100 });
               await page.evaluate((address) => {
@@ -850,7 +880,7 @@ await randomSleep(80000,1200000);
 
 
           await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
-          await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+          await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address, { delay: 100 });
 
           await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
           await page.click('#ContinueButton')
@@ -907,7 +937,7 @@ randomSleep(80000, 1200000);
 
 //   // Fill in phone and email details
 //    page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
-//  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email, { delay: 100 });
+//  page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address, { delay: 100 });
 
 // Check the consent checkbox
  page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
@@ -1005,10 +1035,10 @@ await page.type('#txtAddr2',data.Payload.Principal_Address.PA_Address_Line2 );
 
 await page.type('#txtCity', data.Payload.Principal_Address.PA_City);
 await page.type('#txtState',data.Payload.Principal_Address.PA_State);
-// await page.type('#txtPostal', data.Payload.Principal_Address.PA_Postal_Code);
+// await page.type('#txtPostal', data.Payload.Principal_Address.PA_Zip_Code);
 await page.evaluate((data) => {
 // Set the value of the phone number field directly
-document.getElementById('txtPostal').value =data.Payload.Principal_Address.PA_Postal_Code;
+document.getElementById('txtPostal').value =data.Payload.Principal_Address.PA_Zip_Code;
 }, data);
 // await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
 await page.evaluate((data) => {
@@ -1037,9 +1067,9 @@ await page.type('#txtAddr2Mail',data.Payload.Principal_Address.PA_Address_Line2 
 
 await page.type('#txtCityMail', data.Payload.Principal_Address.PA_City);
 await page.type('#txtStateMail',data.Payload.Principal_Address.PA_State);
-// await page.type('#txtPostalMail', data.Payload.Principal_Address.PA_Postal_Code);
+// await page.type('#txtPostalMail', data.Payload.Principal_Address.PA_Zip_Code);
 await page.evaluate((data) => {
-document.getElementById('txtPostalMail').value =data.Payload.Principal_Address.PA_Postal_Code;
+document.getElementById('txtPostalMail').value =data.Payload.Principal_Address.PA_Zip_Code;
 }, data);
 // await page.type('#txtPhone', data.Payload.Principal_Address.PA_Contact_NO);
 
@@ -1278,7 +1308,7 @@ console.error('Failed to click the button:', error);
             await randomSleep(1000, 3000);
             await page.waitForSelector("#princ_zip");
 
-            await page.type('#princ_zip', data.Payload.Principal_Address.PA_Postal_Code);
+            await page.type('#princ_zip', data.Payload.Principal_Address.PA_Zip_Code);
             await randomSleep(1000, 3000);
 
             await page.waitForSelector("#princ_cntry");
@@ -1404,10 +1434,10 @@ console.error('Failed to click the button:', error);
                 await page.type('#ret_name',data.Payload.Organizer_Information.Organizer_Details.Org_Name);
                 await page.waitForSelector('#ret_email_addr'); 
 
-                await page.type('#ret_email_addr',data.Payload.Organizer_Information.Organizer_Details.Org_Email);
+                await page.type('#ret_email_addr',data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address);
                 await page.waitForSelector('#email_addr_verify'); 
 
-                await page.type('#email_addr_verify',data.Payload.Organizer_Information.Organizer_Details.Org_Email);
+                await page.type('#email_addr_verify',data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address);
             }
             await page.type('#signature',data.Payload.Organizer_Information.Organizer_Details.Org_Name);
             if(data.Payload.Officer_Information){
@@ -1585,7 +1615,7 @@ console.error('Failed to click the button:', error);
             await randomSleep(1000, 3000);
             await page.waitForSelector("#princ_zip");
 
-            await page.type('#princ_zip', data.Payload.Principal_Address.PA_Postal_Code);
+            await page.type('#princ_zip', data.Payload.Principal_Address.PA_Zip_Code);
             await randomSleep(1000, 3000);
 
             await page.waitForSelector("#princ_cntry");
@@ -1680,10 +1710,10 @@ console.error('Failed to click the button:', error);
                 await page.type('#ret_name',data.Payload.Organizer_Information.Organizer_Details.Org_Name);
                 await page.waitForSelector('#ret_email_addr'); 
 
-                await page.type('#ret_email_addr',data.Payload.Organizer_Information.Organizer_Details.Org_Email);
+                await page.type('#ret_email_addr',data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address);
                 await page.waitForSelector('#email_addr_verify'); 
 
-                await page.type('#email_addr_verify',data.Payload.Organizer_Information.Organizer_Details.Org_Email);
+                await page.type('#email_addr_verify',data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address);
             }
 
             await page.waitForSelector('#signature'); 
@@ -1722,6 +1752,119 @@ console.error('Failed to click the button:', error);
         }
         
       }
+      if(data.stateFullDesc == 'Colorado'){
+        if(data.orderShortName=='LLC'){
+    
+        await retry(async () => {
+    
+          try {
+            console.log("Navigating to the Landing page...");
+    
+          
+            await page.goto(jsonData.State.stateUrl, {
+              waitUntil: 'networkidle0',
+              timeout: 60000
+            });
+            console.log('Landing Page Loaded');
+          } catch (error) {
+            console.error("Error navigating to the Landing page:", error.message);
+            throw new Error("Navigation to the Landing page failed.");
+          }
+        }, 5, page);
+      
+        await randomSleep(3000, 5000);
+        await performEventsonLandingPage(page);
+      
+        await adjustViewport(page);
+      
+        console.log("Waiting for the list to appear...");
+      
+        async function performEventsonLandingPage(page) {
+          try {
+
+            await page.waitForSelector('.w3-ulcontents'); 
+            await page.evaluate(() => {
+              const link =document.querySelector('.w3-ulcontents a[href="#LLC"]'); 
+              if(link){
+                link.click();
+              }
+            }); 
+            await page.waitForNavigation({waitUntil:"networkidle0",timeout:120000}); 
+            await page.waitForSelector('.w3-table.w3-cmsTable');
+            await page.evaluate(() => {
+              const link = document.querySelector('.w3-table.w3-cmsTable tbody tr:nth-child(1) td:nth-child(2) a');
+              if (link) {
+                link.click();
+              }
+            });
+            await page.waitForNavigation({waitUntil:"networkidle0",timeout:120000}); 
+
+            await page.waitForSelector('input.w3-btn-next[type="button"]');
+            await page.evaluate(() => {
+              document.querySelector('input.w3-btn-next[type="button"]').click();
+            });
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+            try {
+              
+          
+              await page.waitForSelector('#name', { timeout: 5000 });
+              let legalName=data.Payload.Name.CD_Legal_Name; 
+          
+              if (legalName.length > 200) {
+                throw new Error('Input exceeds the maximum length of 200 characters.');
+              }
+          
+              if (!/^[\x00-\x7F]+$/.test(legalName)) {
+                throw new Error('Input contains non-ASCII characters.');
+              }
+          
+              await page.type('#name', legalName, { delay: 100 });
+          
+              const filledValue = await page.$eval('#name', el => el.value);
+              console.log('Filled input value:', filledValue);
+          
+              
+          
+            } catch (error) {
+              let errorResponse = {
+                success: false,
+                error: e.message
+            };
+            if(e.message.includes(("The name contains Ascii characters"))){
+                errorResponse.error=e.message; 
+            }
+            } 
+            if(data.Payload.Principal_Address){
+
+              
+            }
+
+
+
+
+             
+           
+
+          
+
+
+
+
+
+
+
+
+
+
+
+
+          }catch(e){
+
+          }
+        }
+      }
+        
+    }
       else if(data.stateFullDesc=="Nebraska"){
         await retry(async () => {
           try {
@@ -1740,9 +1883,329 @@ console.error('Failed to click the button:', error);
           }
       },5,page);
 
-            
+      await  page.waitForNavigation({waitUntil:'networkidle0'}); 
+      async function clickSubmitButton(page) {
+        try {
+    
+            await page.waitForSelector('#submit', { visible: true, timeout: 10000 });
+    
+            console.log("Submit button is visible. Checking if it's enabled...");
+    
+            const result = await page.evaluate(() => {
+                const button = document.getElementById('submit');
+                if (!button) {
+                    return { success: false, message: 'Submit button not found' };
+                }
+                if (button.disabled) {
+                    return { success: false, message: 'Submit button is disabled' };
+                }
+                button.click();
+                return { success: true, message: 'Submit button clicked' };
+            });
+    
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+    
+            console.log(result.message);
+    
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    
+        } catch (error) {
+            console.error(`Error clicking the submit button: ${error.message}`);
+            throw new Error(`Failed to click the submit button`);
+        }
+    }
+    await page.evaluate(() => {
+      document.querySelector('input[type="radio"][id="entn"][name="startFilingAction"]').click();
+    });
+  
+      if(data.orderShortName =="LLC"){
+        await page.waitForSelector("#entity");
+      await page.evaluate(()=>{
+
+        const  dropdown=document.querySelector("#entity"); 
+       
+        const option = Array.from(dropdown.options).find(opt => opt.text === "Domestic Limilited Liability Company");
+
+        if(option){
+            dropdown.value=option.value ;
+        }
+    });
+    await page.waitForSelector("#optclientmemo",{timeout:12000});
+    await page.type('#optclientmemo',data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details); 
+    await clickSubmitButton(page); 
+
+    await page.waitForNavigation({waitUntil:'networkidle0'}); 
+    await page.waitForSelector("#edocform",{visible:true ,waitUntil: "networkidle0"});
+    await page.evaluate((data) => {
+
+      document.querySelector('#corpname').value = data.Payload.Name.CD_Legal_Name;
+
+      document.querySelector('#poaddr1').value = data.Payload.Principal_Address.PA_Address_Line1;
+      document.querySelector('#poaddr2').value = data.Payload.Principal_Address.PA_Address_Line2;
+      document.querySelector('#pocity').value = data.Payload.Principal_Address.PA_City;
+      document.querySelector('#postate').value = data.Payload.Principal_Address.PA_State;
+      document.querySelector('#pozip').value = data.Payload.Principal_Address.PA_Zip_Code;
+
+     
+
+  },data);
+
+  await page.waitForSelector('#eflano',{timeout:12000}); 
+  if (data.effectiveWhenFiled) {
+    
+    await page.click('#eflano'); 
+  } else {
+    
+    await page.click('#eflayes'); //
+  }
+  await page.waitForSelector("#articlesDoc"); 
+  await page.click("#articlesDoc"); 
+  await randomSleep(100000,40000); 
+
+  await page.waitForSelector("#edocsubmit",{visible:true,timeout:10000}); 
+  await page.click("#edocsubmit"); 
+  if(data.payload.Registered_Agent){
+    if(data.Payload.Registered_Agent.Name){
+    
+     
+      await page.click("#rai");    
+  
+
+      await page.waitForSelector("form");
+      let name =data.Payload.Registered_Agent.RA_Name.split(" "); 
+
+        await page.type('#raisfn', name[0]);
+        await page.type('#raisln', name[1]);
+        await page.click('button[type="submit"]');
+        await page.waitForSelector('#raeiresult');
+        const noResults = await page.evaluate(() => {
+          const noResultsElement = document.querySelector('#raeiresult .text-danger');
+          return noResultsElement && noResultsElement.textContent.includes('No Results Found');
+        });
+        if (noResults) {
+          console.log('No results found');
+          await page.waitForSelector('.newira'); 
+          
+          await page.click('.newira');
+          
+          await page.waitForSelector('.modal-dialog');
+
+          await page.evaluate((data) => {
+        
+            const name = document.querySelector('#lbranamesp').textContent;
+            console.log(`Name in the modal: ${name}`);
+          try{
+                 let len = data.Payload.Registered_Agent.Address.RA_Address_Line1.length; 
+                 let len1=  data.Payload.Registered_Agent.Address.RA_Address_Line2.length; 
+                 if(len<50 || len1 <50){
+              document.querySelector('#lbraaddr1').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
+            document.querySelector('#lbraaddr2').value = data.Payload.Registered_Agent.Address.RA_Address_Line2;
+
+                 }else{
+                  throw new Error("The address should be less than 50 characters")
+                 }
                  
+            document.querySelector('#lbracity').value = data.Payload.Registered_Agent.Address.RA_City;
+
+        
+            
+            document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+
+            page.waitForSelector('#lbrasubmit',{visible:true,timeout:100000});
+            page.evaluate(() => {
+              const submitButton = document.querySelector('#lbrasubmit');
+              if (submitButton) {
+
+                  submitButton.click();
+              }
+          }); 
+
+        page.waitForSelector('a[href="https://sos.nebraska.gov/sites/sos.nebraska.gov/files/doc/business-services/Corporations/Forms/CertificateOfOrganization.pdf"]');
+        page.click('a[href="https://sos.nebraska.gov/sites/sos.nebraska.gov/files/doc/business-services/Corporations/Forms/CertificateOfOrganization.pdf"]');
+
+        page.randomSleep(10000,40000);
+        page.waitForSelector("#articlesDoc"); 
+        page.click("#articlesDoc"); 
+        page.randomSleep(100000,40000);
+        page.waitForSelector("#edocsubmit",{visible:true,timeout:10000}); 
+        page.click("#edocsubmit");
+        
+
+
+
+          }catch(e){ let errorResponse = {
+            success: false,
+            error: e.message
+        };
+        if (e.message.includes('Execution context was destroyed')) {
+            errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+        } else if (e.message.includes('Address is more than 50 characters')) {
+            errorResponse.error = e.message;
+        }}; 
+          },data);     
+        
+        
+          await page.waitForSelector('#certify', { visible: true, timeout: 10000 });
+          await page.click('#certify');
+          await page.waitForSelector('#emailadd', { visible: true });
+          await page.type('#emailadd', data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address);
+          
+          await randomSleep(100000,300000); 
+        }
+          
+
+    }
+
+  }
+ }else if(data.orderShortName.toUpperCase()=='CORP'){
+  await page.waitForSelector("#entity");
+
+  await page.evaluate(()=>{
+
+    const dropdown=document.querySelector("#entity"); 
+
+    const option = Array.from(dropdown.options).find(opt => opt.text === "Domestic Corporation");
+
+    if(option){
+        dropdown.value=option.value ;
+    }
+});
+if(data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details){
+await page.waitForSelector("#optclientmemo",{timeout:12000});
+await page.type('#optclientmemo',data.Payload.Registered_Agent.Purpose.CD_Business_Purpose_Details);
+}else{
+    await page.waitForSelector("#submit"); 
+}
+await clickSubmitButton(page); 
+
+await page.waitForNavigation({waitUntil:'networkidle0'}); 
+// await page.waitForSelector("#edocform",{visible:true ,waitUntil: "networkidle0"});
+await page.evaluate((data) => {
+
+  document.querySelector('#corpname').value = data.Payload.Name.CD_Legal_Name;
+
+  document.querySelector('#dollaramt').value = data.Payload.Stock_Details.SI_No_Of_Shares;
+  document.querySelector('#duexno').value = data.Payload.Period_of_Duration;
+  
+ 
+
+},data);
+
+await page.waitForSelector('#eflano',{timeout:12000}); 
+if (data.effectiveWhenFiled) {
+
+await page.click('#eflano'); 
+} else {
+
+await page.click('#eflayes'); //
+}
+await page.waitForSelector("#articlesDoc"); 
+await page.click("#articlesDoc"); 
+await randomSleep(100000,40000); 
+
+await page.waitForSelector("#edocsubmit",{visible:true,timeout:10000}); 
+await page.click("#edocsubmit"); 
+if(data.payload.Registered_Agent){
+if(data.Payload.Registered_Agent.Name){
+
+ 
+  await page.click("#rai");    
+
+
+  await page.waitForSelector("form");
+  let name =data.Payload.Registered_Agent.RA_Name.split(" "); 
+
+    await page.type('#raisfn', name[0]);
+    await page.type('#raisln', name[1]);
+    await page.click("#raisearch");
+    await page.waitForSelector('#raeiresult');
+    const noResults = await page.evaluate(() => {
+      const noResultsElement = document.querySelector('#raeiresult .text-danger');
+      return noResultsElement && noResultsElement.textContent.includes('No Results Found');
+    });
+    if (noResults) {
+      console.log('No results found');
+      await page.waitForSelector('.newira'); 
+      
+      await page.click('.newira');
+      
+      await page.waitForSelector('.modal-dialog');
+
+      await page.evaluate((data) => {
+    
+        const name = document.querySelector('#lbranamesp').textContent;
+        console.log(`Name in the modal: ${name}`);
+      try{
+             let len = data.Payload.Registered_Agent.Address.RA_Address_Line1.length; 
+             let len1=  data.Payload.Registered_Agent.Address.RA_Address_Line2.length; 
+             if(len<50 || len1 <50){
+          document.querySelector('#lbraaddr1').value = data.Payload.Registered_Agent.Address.RA_Address_Line1;
+        document.querySelector('#lbraaddr2').value = data.Payload.Registered_Agent.Address.RA_Address_Line2;
+
+             }else{
+              throw new Error("The address should be less than 50 characters")
+             }
+             
+        document.querySelector('#lbracity').value = data.Payload.Registered_Agent.Address.RA_City;
+
+    
+        
+        document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+
+        page.waitForSelector('#lbrasubmit',{visible:true,timeout:100000});
+        page.evaluate(() => {
+          const submitButton = document.querySelector('#lbrasubmit');
+          if (submitButton) {
+
+              submitButton.click();
           }
+      }); 
+
+    page.waitForSelector('a[href="https://sos.nebraska.gov/sites/sos.nebraska.gov/files/doc/business-services/Corporations/Forms/CertificateOfOrganization.pdf"]');
+    page.click('a[href="https://sos.nebraska.gov/sites/sos.nebraska.gov/files/doc/business-services/Corporations/Forms/CertificateOfOrganization.pdf"]');
+
+    page.randomSleep(10000,40000);
+    page.waitForSelector("#articlesDoc"); 
+    page.click("#articlesDoc"); 
+    page.randomSleep(100000,40000);
+    page.waitForSelector("#edocsubmit",{visible:true,timeout:10000}); 
+    page.click("#edocsubmit");
+    
+
+
+
+      }catch(e){ let errorResponse = {
+        success: false,
+        error: e.message
+    };
+    if (e.message.includes('Execution context was destroyed')) {
+        errorResponse.error = "Error: Execution context was destroyed, possibly due to page navigation.";
+    } else if (e.message.includes('Address is more than 50 characters')) {
+        errorResponse.error = e.message;
+    }}; 
+      },data);     
+    
+    
+      await page.waitForSelector('#certify', { visible: true, timeout: 10000 });
+      await page.click('#certify');
+      await page.waitForSelector('#emailadd', { visible: true });
+      await page.type('#emailadd', data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address_Address);
+      
+      await randomSleep(100000,300000); 
+    }
+      
+
+}
+
+}
+
+
+
+ }
+
+        }
 
 
 }
@@ -2018,6 +2481,7 @@ console.error('Failed to click the button:', error);
           await page.waitForSelector('button.btn.btn-primary.btn-lg');
 
     await page.click('button.btn.btn-primary.btn-lg');
+
 }else if(jsonData.State.stateFullDesc=="Pennsylvania"){
 
       await retry(async () => {
@@ -2122,9 +2586,62 @@ console.error('Failed to click the button:', error);
 
 
 
+    }else if (jsonData.State.stateFullDesc =="West-Virginia"){
+      const stateSelectors = loadSelectors(jsonData.State.stateFullDesc);
+
+      await retry(async () => {
+
+          
+        try {
+            // sendWebSocketMessage('Attempting to add the name');
+            console.log("Navigating to the login page...");
+            // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
+            const response = await page.goto(jsonData.State.stateUrl, {
+
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
+            log('Login page loaded.');
+        } catch (error) {
+            console.error("Error navigating to the login page:", error.message);
+            throw new Error("Navigation to the login page failed.");
+        }
+    },5,page);
+
+    await randomSleep(3000, 5000);
+    try {
+        await performLogin(page, jsonData);
+    } catch (error) {
+        console.error("Error waiting for the preview page:", error.message);
+        throw new Error("Invalid Login Credentials");
+    }
+
+    await adjustViewport(page);
+    try {
+      await this.page.waitForSelector(stateSelectors["West-Virginia"].base_content, { visible: true, timeout: 10000 });
+      await this.page.click(stateSeleclsctors["West-Virginia"].base_content);
+      console.log("Clicked 'Don't Show Again' button.");
+  } catch (err) {
+      console.log("'Don't Show Again' button not found or already dismissed.");
+  }
+  await this.page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+  await page.waitForSelector(stateSelectors["West-Virginia"].selectaBusiness,{timeout:10000,visible:true});
+  await page.click(stateSelectors["West-Virginia"].selectaBusiness); 
+
+  await this.page.evaluate(() => {
+    __doPostBack('base$content$pageContentControl$_ctl1', '');
+});
+
+await this.page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+console.log("PostBack triggered successfully, and navigation completed.");
+
+
+
+                                      
     }
   }
-  
+}
     
     
 
@@ -2169,20 +2686,24 @@ async function performLogin(page, jsonData) {
 
    if(jsonData.State.stateFullDesc=="New-York"){
     try {
+            const stateSelectors = loadSelectors(jsonData.State.stateFullDesc);
+            console.log(jsonData.State.stateFullDesc); 
+
+
         console.log("Attempting to login...");
-        ;
+        
 
 
         // Wait for the form to be visible
-        await page.waitForSelector('form', { visible: true, timeout: 120000 });
+        await page.waitForSelector(stateSelectors["New-York"].form, { visible: true, timeout: 120000 });
 
 
 
         // Fill in the login form and handle the submit
         await page.evaluate((jsonData) => {
-            const usernameField = document.querySelector('input[name="P101_USERNAME"]');
-            const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
-            const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
+            const usernameField = document.querySelector(stateSelectors["New-York"].usernameField);
+            const passwordField = document.querySelector(stateSelectors["New-York"].passwordField);
+            const submitButton = document.querySelector(stateSelectors["New-York"].submitButton); // Use the ID of the submit button
 
             if (!usernameField || !passwordField || !submitButton) {
                 throw new Error("Couldn't find login elements");
@@ -2209,12 +2730,12 @@ async function performLogin(page, jsonData) {
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
         // Check for error messages after navigation
-        const alertSelector = '#t_Alert_Notification';
+        const alertSelector = stateSelectors["New-York"].alertselector;
         const errorMessage = 'Invalid Login Credentials';
         
         const alertVisible = await page.evaluate((alertSelector) => {
             const alert = document.querySelector(alertSelector);
-            return alert && alert.querySelector('.t-Alert-body')?.textContent.includes('Invalid Login Credentials');
+            return alert && alert.querySelector(stateSelectors["New-York"].alertbody)?.textContent.includes('Invalid Login Credentials');
         }, alertSelector);
 
         if (alertVisible) {
@@ -2235,9 +2756,10 @@ async function performLogin(page, jsonData) {
       console.log("Attempting to login...");
 
       // Wait for the form to be visible
-      await page.waitForSelector('a[routerlink="/account/login"]', { visible: true, timeout: 60000 });
+      const stateSelectors=loadSelectors(jsonData.State.stateFullDesc);
+      await page.waitForSelector(stateSelectors["Delaware"].loginbutton, { visible: true, timeout: 60000 });
 
-      const loginButton = await page.$('a[routerlink="/account/login"]');
+      const loginButton = await page.$(stateSelectors["Delaware"].loginbutton);
       if (loginButton) {
         await loginButton.click();
         console.log('Clicked login link');
@@ -2248,14 +2770,14 @@ async function performLogin(page, jsonData) {
       } else {
         throw new Error('Login button not found');
       }
-      await page.waitForSelector('input[formcontrolname="userName"]', { visible: true });
-    await page.waitForSelector('input[formcontrolname="password"]', { visible: true });
+      await page.waitForSelector(stateSelectors["Delaware"].usernameField, { visible: true });
+    await page.waitForSelector(stateSelectors["Delaware"].passwordField, { visible: true });
 
       // Fill in the login form and handle the submit
       await page.evaluate((jsonData) => {
-        const usernameField = document.querySelector('input[formcontrolname="userName"]');
-        const passwordField = document.querySelector('input[formcontrolname="password"]');
-        const submitButton = document.querySelector('button[type="submit"]');
+        const usernameField = document.querySelector(stateSelectors["Delaware"].usernameField);
+        const passwordField = document.querySelector(stateSelectors["Delaware"].passwordField);
+        const submitButton = document.querySelector(stateSelectors["Delaware"].submitButton);
     
         if (!usernameField || !passwordField || !submitButton) {
           throw new Error("Couldn't find login elements");
@@ -2271,7 +2793,7 @@ async function performLogin(page, jsonData) {
       await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
       // Check for error messages after navigation
-      const alertSelector = 'ngb-alert';  
+      const alertSelector = stateSelectors["Delaware"].alertselector;  
   const errorMessage = 'You have entered an invalid user ID/ password';
   
   try {
@@ -2298,18 +2820,19 @@ async function performLogin(page, jsonData) {
   }else if(jsonData.State.stateFullDesc === "Pennsylvania"){
     try {
       console.log("Attempting to login...");
+      const stateSelectors=loadSelectors(jsonData.State.stateFullDesc);
 
       // Wait for the form to be visible
-      await page.waitForSelector('.btn.btn-default.login-link', { visible: true, timeout: 120000 })
-      await page.click('.btn.btn-default.login-link');
+      await page.waitForSelector(stateSelectors["Pennsylvania"].loginbutton, { visible: true, timeout: 120000 })
+      await page.click(stateSelectors["Pennsylvania"].loginbutton);
 
       // Fill in the login form and handle the submit
 
-      await page.waitForSelector('input[name="Username"]'); 
+      await page.waitForSelector(stateSelectors["Pennsylvania"].usernamefield); 
       await page.evaluate((jsonData) => {
-          const usernameField = document.querySelector('input[name="Username"]');
-          const passwordField = document.querySelector('input[name="Password"]');
-          const submitButton = document.querySelector('button.btn-primary'); // Use the ID of the submit button
+          const usernameField = document.querySelector(stateSelectors["Pennsylvania"].usernamefield);
+          const passwordField = document.querySelector(stateSelectors["Pennsylvania"].passwordfield);
+          const submitButton = document.querySelector(stateSelectors["Pennsylvania"].submitbutton); // Use the ID of the submit button
 
           if (!usernameField || !passwordField || !submitButton) {
               throw new Error("Couldn't find login elements");
@@ -2355,6 +2878,72 @@ async function performLogin(page, jsonData) {
       console.error("Login failed:", error.message);
       throw error
   }
+}else if(jsonData.State.stateFullDesc == "West-Virginia"){
+  try {
+    const stateSelectors = loadSelectors(jsonData.State.stateFullDesc);
+    console.log(jsonData.State.stateFullDesc); 
+
+
+console.log("Attempting to login...");
+
+
+
+// Wait for the form to be visible
+await page.waitForSelector(stateSelectors["West-Virginia"].form, { visible: true, timeout: 120000 });
+
+
+
+// Fill in the login form and handle the submit
+await page.evaluate((jsonData) => {
+    const usernameField = document.querySelector(stateSelectors["West-Virginia"].usernameField);
+    const passwordField = document.querySelector(stateSelectors["West-Virginia"].passwordField);
+    const submitButton = document.querySelector(stateSelectors["West-Virginia"].loginButton); // Use the ID of the submit button
+
+    if (!usernameField || !passwordField || !submitButton) {
+        throw new Error("Couldn't find login elements");
+    }
+
+    usernameField.value = jsonData.State.filingWebsiteUsername;
+    passwordField.value = jsonData.State.filingWebsitePassword;
+
+    if (typeof apex !== 'undefined' && typeof apex.submit === 'function') {
+        // Use apex.submit if available
+        apex.submit({ request: 'LOGIN', validate: true });
+    } else if (submitButton) {
+        // Fallback to clicking the button if `apex.submit` is not available
+        submitButton.click();
+    } else {
+        throw new Error("Submit method or button not found");
+    }
+
+}, jsonData);
+
+// Wait for navigation or some indication that login succeeded
+await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+// Check for error messages after navigation
+const alertSelector = stateSelectors["New-York"].alertselector;
+const errorMessage = 'Invalid Login Credentials';
+
+const alertVisible = await page.evaluate((alertSelector) => {
+    const alert = document.querySelector(alertSelector);
+    return alert && alert.querySelector(stateSelectors["New-York"].alertbody)?.textContent.includes('Invalid Login Credentials');
+}, alertSelector);
+
+if (alertVisible) {
+    console.error("Login failed: Invalid Login Credentials");
+    throw new Error("Login failed: Invalid Login Credentials");
+}
+
+console.log('Login successful.');
+
+} catch (error) {
+console.error("Login failed:", error.message);
+throw error; // Re-throw the error for higher-level handling
+}
+
+
+
 }
 }
 
@@ -2669,7 +3258,7 @@ await page.evaluate(() => {
   await page.type('input[name="CITY"]', data.Payload.Registered_Agent.RA_Address.RA_City);
   await page.select('select[name="STATE"]', 'PA');
   await page.waitForSelector('input[name="POSTAL_CODE"]');
-  await page.type('input[name="POSTAL_CODE"]', data.Payload.Registered_Agent.RA_Address.RA_Postal_Code);
+  await page.type('input[name="POSTAL_CODE"]', data.Payload.Registered_Agent.RA_Address.RA_Zip_Code);
   const dropdown= document.querySelector('[id^="field"]');
   const option = Array.from(dropdown.options).find(opt => opt.text === data.Payload.County.CD_County.toUpperCase());
   if(option){
@@ -3036,7 +3625,7 @@ async function fillNextPageCorp(page, data) {
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
-                document.querySelector('input[name="P3_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+                document.querySelector('input[name="P3_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
             } else if (opt2 && opt2.checked) {
                 const serviceCompanySelect = document.querySelector("#P3_SOP_SERVICE_COMPANY");
                 if (serviceCompanySelect) {
@@ -3046,7 +3635,7 @@ async function fillNextPageCorp(page, data) {
                 document.querySelector('input[name="P3_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P3_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P3_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
-                document.querySelector('input[name="P3_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+                document.querySelector('input[name="P3_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
             }
 
             const agentOpt1 = document.querySelector("input#P3_RA_ADDR_OPTION_0");
@@ -3060,7 +3649,7 @@ async function fillNextPageCorp(page, data) {
                 document.querySelector('input[name="P3_RA_ADDR1"]').value = data.Payload.Registered_Agent.RA_Address.RA_Address_Line1;
                 document.querySelector('input[name="P3_RA_ADDR2"]').value =  data.Payload.Registered_Agent.RA_Address.RA_Address_Line2;
                 document.querySelector('input[name="P3_RA_CITY"]').value =  data.Payload.Registered_Agent.RA_Address.RA_City;
-                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
+                document.querySelector('input[name="P3_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Zip_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P3_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -3125,7 +3714,7 @@ if (clickedButton === 'ServiceCompany') {
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
-    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
 
    
 
@@ -3135,16 +3724,15 @@ if (clickedButton === 'ServiceCompany') {
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
-    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
 
   
 } else if (clickedButton === 'Incorporator') {
-  // Populate fields for Incorporator
   
   document.querySelector('#P3_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
   document.querySelector('#P3_FILER_ADDR1').value = data.Payload.Principal_Address.PA_Address_Line1
     document.querySelector('input[name="P3_FILER_CITY"]').value = data.Payload.Principal_Address.PA_City;
-    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+    document.querySelector('input[name="P3_FILER_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
 
   
 
@@ -3358,7 +3946,7 @@ if(data.Payload.Registered_Agent){
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
   await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
-  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email_Address);
   await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
   await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
   await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City)
@@ -3368,7 +3956,7 @@ if(data.Payload.Registered_Agent){
   await page.evaluate((data) => {
     const postalInput = document.querySelector('#OfficeZip');
     if (postalInput) {
-      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;  // Set value directly using document.querySelector
+      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Zip_Code;  // Set value directly using document.querySelector
       postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
     } else {
       console.error('Postal Code input field not found');
@@ -3380,7 +3968,7 @@ if(data.Payload.Registered_Agent){
   await page.evaluate((data) => {
     const postalInput = document.querySelector('#OfficeZipPlus');
     if (postalInput) {
-      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;  // Set value directly using document.querySelector
+      postalInput.value = data.Payload.Registered_Agent.RA_Address.RA_Zip_Code;  // Set value directly using document.querySelector
       postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
     } else {
       console.error('Postal Code input field not found');
@@ -3535,6 +4123,7 @@ async function fillNextPage(page, data) {
                     if (effectiveDateInput) {
                         effectiveDateInput.value = data.effectiveDate;
 
+
                         effectiveDateInput.dispatchEvent(new Event('change', { bubbles: true }));
 
                         const dateComponent = document.querySelector('#P4_EXIST_CALENDAR');
@@ -3581,7 +4170,7 @@ async function fillNextPage(page, data) {
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
             } else if (opt2 && opt2.checked) {
                 const serviceCompanySelect = document.querySelector("#P4_SOP_SERVICE_COMPANY");
                 if (serviceCompanySelect) {
@@ -3591,7 +4180,7 @@ async function fillNextPage(page, data) {
                 document.querySelector('input[name="P4_SOP_ADDR1"]').value = data.Payload.Principal_Address.PA_Address_Line1;
                 document.querySelector('input[name="P4_SOP_ADDR2"]').value = data.Payload.Principal_Address.PA_Address_Line2;
                 document.querySelector('input[name="P4_SOP_CITY"]').value = data.Payload.Principal_Address.PA_City;
-                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Postal_Code;
+                document.querySelector('input[name="P4_SOP_POSTAL_CODE"]').value = data.Payload.Principal_Address.PA_Zip_Code;
             }
 
             const agentOpt1 = document.querySelector("input#P4_RA_ADDR_OPTION_0");
@@ -3605,7 +4194,7 @@ async function fillNextPage(page, data) {
                 document.querySelector('input[name="P4_RA_ADDR1"]').value = data.Payload.Registered_Agent.RA_Address.RA_Address_Line1;
                 document.querySelector('input[name="P4_RA_ADDR2"]').value =  data.Payload.Registered_Agent.RA_Address.RA_Address_Line2;
                 document.querySelector('input[name="P4_RA_CITY"]').value =  data.Payload.Registered_Agent.RA_Address.RA_City;
-                document.querySelector('input[name="P4_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
+                document.querySelector('input[name="P4_RA_POSTAL_CODE"]').value = data.Payload.Registered_Agent.RA_Address.RA_Zip_Code;
             } else if (agentOpt2 && agentOpt2.checked) {
                 const registeredAgentSelect = document.querySelector("#P4_RA_SERVICE_COMPANY");
                 if (registeredAgentSelect) {
@@ -3617,13 +4206,13 @@ async function fillNextPage(page, data) {
             document.querySelector('input[name="P4_ORGANIZER_NAME"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
             document.querySelector('input[name="P4_ORGANIZER_ADDR1"]').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_ORGANIZER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
-            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
+            document.querySelector('input[name="P4_ORGANIZER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Zip_Code;
             document.querySelector('input[name="P4_SIGNATURE"]').value = data.Payload.Organizer_Information.Organizer_Details.Org_Name;
 
             document.querySelector('#P4_FILER_NAME').value = data.Payload.Name.CD_Alternate_Legal_Name;
             document.querySelector('#P4_FILER_ADDR1').value = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
             document.querySelector('input[name="P4_FILER_CITY"]').value = data.Payload.Organizer_Information.Org_Address.Org_City;
-            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Postal_Code;
+            document.querySelector('input[name="P4_FILER_POSTAL_CODE"]').value = data.Payload.Organizer_Information.Org_Address.Org_Zip_Code;
 
         }, data);
 
@@ -3661,17 +4250,7 @@ async function fillNextPage(page, data) {
 
 
               }else if(data.State.stateFullDesc=="New-Jersey"){
-                const designators = [
-                  'LLC',
-                  'L.L.C.',
-                  'L.L.C',
-                  'LTD LIABILITY CO',
-                  'LTD LIABILITY CO.',
-                  'LTD LIABILITY COMPANY',
-                  'LIMITED LIABILITY CO',
-                  'LIMITED LIABILITY CO.',
-                  'LIMITED LIABILITY COMPANY'
-              ];
+                const designators =['LLC','L.L.C.','L.L.C','LTD LIABILITY CO','LTD LIABILITY CO.','LTD LIABILITY COMPANY','LIMITED LIABILITY CO','LIMITED LIABILITY CO.','LIMITED LIABILITY COMPANY'];
             businessType = await page.evaluate(() => {
               const selectElement = document.querySelector('#BusinessNameDesignator');
       const option = Array.from(selectElement.options).find(opt => opt.text === 'LLC');
@@ -3679,9 +4258,7 @@ async function fillNextPage(page, data) {
           
       });
           if(businessType){
-            // const selectElement = document.querySelector('#BusinessType');
-            // const option = Array.from(selectElement.options).find(opt => opt.text === 'NJ DOMESTIC LIMITED LIABILITY COMPANY (LLC)');
-            // return option ? option.value : null;
+            
             await page.evaluate((value) => {
               const select = document.querySelector('#BusinessNameDesignator');
               select.value = value;
@@ -3689,8 +4266,7 @@ async function fillNextPage(page, data) {
           }, businessType);
           }
 
-                // await page.waitForSelector('');
-                // await page.select('#BusinessNameDesignator', upperCaseName);
+               
 
 
 
@@ -3768,7 +4344,7 @@ async function fillNextPage(page, data) {
       //         select.dispatchEvent(new Event('change', { bubbles: true }));
       //     }, businessType);
       //     }
-      //       await page.type('#Zip', data.Payload.Principal_Address.PA_Postal_Code);
+      //       await page.type('#Zip', data.Payload.Principal_Address.PA_Zip_Code);
 
       //       await page.evaluate((businessPurpose) => {
       //         document.querySelector('#BusinessPurpose').value = businessPurpose;
@@ -3794,13 +4370,13 @@ if(data.Payload.Registered_Agent){
   await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
   await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
-  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email);
+  await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email_Address);
   await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
   await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
    await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City);
    await page.waitForSelector('#OfficeZip', { visible: true, timeout: 5000 });
 
-   const postalCode = data.Payload.Registered_Agent.RA_Address.RA_Postal_Code;
+   const postalCode = data.Payload.Registered_Agent.RA_Address.RA_Zip_Code;
 
    await page.evaluate((postalCode) => {
      const postalInput = document.querySelector('#OfficeZip');
@@ -4003,13 +4579,10 @@ async function adjustViewport(page) {
     });
 }
 
-
-
-
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
-}
+
 
 
 
