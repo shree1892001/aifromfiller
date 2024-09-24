@@ -1,5 +1,5 @@
 {
-    "New-York": {
+    "NewYork": {
         "form": "form",
         "usernameField": "input[name=\"P101_USERNAME\"]",
         "passwordField": "input[name=\"P101_PASSWORD\"]",

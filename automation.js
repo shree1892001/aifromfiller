@@ -2780,15 +2780,15 @@ async function performLogin(page, jsonData) {
 
 
         // Wait for the form to be visible
-        await page.waitForSelector(stateSelectors["New-York"].form, { visible: true, timeout: 120000 });
+        await page.waitForSelector("form", { visible: true, timeout: 120000 });
 
 
 
         // Fill in the login form and handle the submit
-        await page.evaluate((jsonData,stateSelectors) => {
-            const usernameField = document.querySelector(stateSelectors["New-York"].usernameField);
-            const passwordField = document.querySelector(stateSelectors["New-York"].passwordField);
-            const submitButton = document.querySelector(stateSelectors["New-York"].submitButton); // Use the ID of the submit button
+        await page.evaluate((jsonData) => {
+            const usernameField = document.querySelector('input[name="P101_USERNAME"]');
+            const passwordField = document.querySelector('input[name="P101_PASSWORD"]');
+            const submitButton = document.querySelector('button#P101_LOGIN'); // Use the ID of the submit button
 
             if (!usernameField || !passwordField || !submitButton) {
                 throw new Error("Couldn't find login elements");
@@ -2809,13 +2809,13 @@ async function performLogin(page, jsonData) {
                 throw new Error("Submit method or button not found");
             }
 
-        }, {jsonData,stateSelectors});
+        },jsonData);
 
         // Wait for navigation or some indication that login succeeded
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
         // Check for error messages after navigation
-        const alertSelector = stateSelectors["New-York"].alertselector;
+        const alertSelector ="#t_Alert_Notification";
         const errorMessage = 'Invalid Login Credentials';
         
         const alertVisible = await page.evaluate((alertSelector) => {
