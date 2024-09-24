@@ -4629,12 +4629,7 @@ await page.waitForSelector('input.btn.btn-success');
         submitButton.click();
     }
   });
-
-
-
-
-
-              }
+}
 
 }
 
