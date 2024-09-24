@@ -5,7 +5,7 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const axios = require('axios');
 const fs = require('fs');
 const cors = require('cors');
-const wvSelectors = require('./selectorWestViriginia');
+// const wvSelectors = require('./selectorWestViriginia');
 function loadSelectors(stateFullDesc) {
   const stateFile = path.join(__dirname,'properties',  `${stateFullDesc.toLowerCase().replace(/ /g, '-')}_selectors.json`);
   return JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
@@ -59,9 +59,20 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     try {
         let jsonData = requestPayload.data;
         // let jsonData = requestPayload;
+        // let jsonData = requestPayload.data;
+        
+        // Check if `jsonData` is a string and needs parsing
+        if (typeof jsonData === "string") {
+            jsonData = JSON.parse(jsonData);
+        }
+        
+        console.log(jsonData); // This will print the valid object
 
-        jsonData=JSON.parse(jsonData)
-        console.log(jsonData)
+
+        log('Data fetched from API successfully.');
+
+        // jsonData=JSON.parse(jsonData)
+        // console.log(jsonData)
 
         log('Data fetched from API successfully.');
 
@@ -600,7 +611,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       // Set the value of the phone number field directly
       document.getElementById('txtPhone').value =data.Payload.Principal_Address.PA_Contact_No;
   }, data);
-    await page.type('#txtEmail', data.Payload.Principal_Address.PA_Email);
+    await page.type('#txtEmail', data.Payload.Principal_Address.PA_Email_Address);
 
                   }
                   if(data.Payload.Shipping_Address){
@@ -1045,7 +1056,7 @@ await page.evaluate((data) => {
 // Set the value of the phone number field directly
 document.getElementById('txtPhone').value =data.Payload.Principal_Address.PA_Contact_No;
 }, data);
-await page.type('#txtEmail', data.Payload.Principal_Address.PA_Email);
+await page.type('#txtEmail', data.Payload.Principal_Address.PA_Email_Address);
 
           }
           if(data.Payload.Shipping_Address){
@@ -1702,7 +1713,7 @@ console.error('Failed to click the button:', error);
             await page.waitForSelector('#purpose');
 
             if (data.Payload.Purpose) {
-              await page.type('#purpose', data.Payload.Purposerpose.CD_Business_Purpose_Details);
+              await page.type('#purpose', data.Payload.Purpose.CD_Business_Purpose_Details);
               await randomSleep(1000, 3000);
             }
             if(data.Payload.Organizer_Information.Organizer_Details){
@@ -1833,10 +1844,84 @@ console.error('Failed to click the button:', error);
             if(e.message.includes(("The name contains Ascii characters"))){
                 errorResponse.error=e.message; 
             }
-            } 
-            if(data.Payload.Principal_Address){
+            }
+            async function fillAddress(page, addressData, selectors) {
+              await page.waitForSelector(selectors.Colorado.principal_address.address1);
+              await page.type(selectors.Colorado.principal_address.address1, addressData.Principal_Address.PA_Address_Line1);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.principal_address.address2);
+              await page.type(selectors.Colorado.principal_address.address2, addressData.Principal_Address.PA_Address_Line2);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.principal_address.city);
+              await page.type(selectors.Colorado.principal_address.city, addressData.Principal_Address.PA_City);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.principal_address.state);
+              await page.type(selectors.Colorado.principal_address.state, addressData.Principal_Address.PA_State);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.principal_address.zip);
 
-              
+
+              await page.evaluate(() => {
+
+                    const zip =document.querySelector(selectors.Colorado.principal_address.zip); 
+                    zip.value=addressData.Principal_Address.PA_Zip_Code;
+              })
+              // await page.type(selectors.Colorado.principal_address.zip, addressData.Principal_Address.PA_Zip_Code);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.principal_address.country);
+              await page.type(selectors.Colorado.principal_address.country, addressData.Principal_Address.PA_Country);
+              await randomSleep(1000, 3000);
+          
+              if (addressData.Incorporator_Information.Address.Inc_Address_Line1 === addressData.Principal_Address.PA_Address_Line1) {
+                  await page.waitForSelector(selectors.Colorado.common_address.common);
+                  console.log(selectors.Colorado.common_address.common); 
+                  await page.click(selectors.Colorado.common_address.common);
+                  await randomSleep(1000, 3000);
+              } else {
+                  await fillMailingAddress(page, addressData, selectors);
+              }
+          }
+          
+          async function fillMailingAddress(page, addressData, selectors) {
+              await page.waitForSelector(selectors.Colorado.mailing_address.address1);
+              await page.type(selectors.Colorado.mailing_address.address1, addressData.Incorporator_Information.Address.Inc_Address_Line1);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.mailing_address.address2);
+              await page.type(selectors.Colorado.mailing_address.address2, addressData.Incorporator_Information.Address.Inc_Address_Line2);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.mailing_address.city);
+              await page.type(selectors.Colorado.mailing_address.city, addressData.Incorporator_Information.Address.Inc_City);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.mailing_address.state);
+              await page.type(selectors.Colorado.mailing_address.state, addressData.Incorporator_Information.Address.Inc_State);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.mailing_address.zip);
+              await page.type(selectors.Colorado.mailing_address.zip, addressData.Incorporator_Information.Address.Inc_Postal_Code);
+              await randomSleep(1000, 3000);
+          
+              await page.waitForSelector(selectors.Colorado.mailing_address.country);
+              await page.type(selectors.Colorado.mailing_address.country, addressData.Incorporator_Information.Address.Inc_Country);
+              await randomSleep(1000, 3000);
+          }
+          
+          if (data.Payload.Principal_Address) {
+              const selectors = loadSelectors(jsonData.State.stateFullDesc);
+              await fillAddress(page, data, selectors);
+          }
+           
+            if(data.Payload.Principal_Address){
+              const selectors =loadSelectors(jsonData.State.stateFullDesc)
+                 
+              await fillAddress(page,data,selectors)
             }
 
 
@@ -2700,7 +2785,7 @@ async function performLogin(page, jsonData) {
 
 
         // Fill in the login form and handle the submit
-        await page.evaluate((jsonData) => {
+        await page.evaluate((jsonData,stateSelectors) => {
             const usernameField = document.querySelector(stateSelectors["New-York"].usernameField);
             const passwordField = document.querySelector(stateSelectors["New-York"].passwordField);
             const submitButton = document.querySelector(stateSelectors["New-York"].submitButton); // Use the ID of the submit button
@@ -2724,7 +2809,7 @@ async function performLogin(page, jsonData) {
                 throw new Error("Submit method or button not found");
             }
 
-        }, jsonData);
+        }, {jsonData,stateSelectors});
 
         // Wait for navigation or some indication that login succeeded
         await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
@@ -2774,7 +2859,7 @@ async function performLogin(page, jsonData) {
     await page.waitForSelector(stateSelectors["Delaware"].passwordField, { visible: true });
 
       // Fill in the login form and handle the submit
-      await page.evaluate((jsonData) => {
+      await page.evaluate((jsonData,stateSelectors) => {
         const usernameField = document.querySelector(stateSelectors["Delaware"].usernameField);
         const passwordField = document.querySelector(stateSelectors["Delaware"].passwordField);
         const submitButton = document.querySelector(stateSelectors["Delaware"].submitButton);
@@ -2789,7 +2874,7 @@ async function performLogin(page, jsonData) {
     
         // Submit the form
         submitButton.click();
-      }, jsonData);
+      }, {jsonData,stateSelectors});
       await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
 
       // Check for error messages after navigation
@@ -2894,7 +2979,7 @@ await page.waitForSelector(stateSelectors["West-Virginia"].form, { visible: true
 
 
 // Fill in the login form and handle the submit
-await page.evaluate((jsonData) => {
+await page.evaluate((jsonData,stateSelectors) => {
     const usernameField = document.querySelector(stateSelectors["West-Virginia"].usernameField);
     const passwordField = document.querySelector(stateSelectors["West-Virginia"].passwordField);
     const submitButton = document.querySelector(stateSelectors["West-Virginia"].loginButton); // Use the ID of the submit button
@@ -2916,7 +3001,7 @@ await page.evaluate((jsonData) => {
         throw new Error("Submit method or button not found");
     }
 
-}, jsonData);
+}, {jsonData,stateSelectors});
 
 // Wait for navigation or some indication that login succeeded
 await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });

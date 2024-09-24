@@ -1,11 +1,31 @@
 {
+    "Colorado": {
+        "links": ".w3-ulcontents",
+        "choose_llc": ".w3-ulcontents a[href='#LLC']",
+        "select_file_online": ".w3-table.w3-cmsTable tbody tr:nth-child(1) td:nth-child(2) a",
 
-    "Colorado":{
+        "principal_address": {
+            "address1": "#streetAddress-address1",
+            "address2": "#streetAddress-address2",
+            "city": "#streetAddress-city",
+            "state": "#streetAddress-state",
+            "zip": "#streetAddress-zip",
+            "province": "#streetAddress-province",
+            "country": "#streetAddress-country"
+        },
+        
+        "mailing_address": {
+            "address1": "#mailingAddress-address1",
+            "address2": "#mailingAddress-address2",
+            "city": "#mailingAddress-city",
+            "state": "#mailingAddress-state",
+            "zip": "#mailingAddress-zip",
+            "province": "#mailingAddress-province",
+            "country": "#mailingAddress-country"
+        },
+        "common_address":{
 
-        "links" : ".w3-ulcontents", 
-        "choose_llc" : ".w3-ulcontents a[href='#LLC']", 
-        "select_file_online": ".w3-table.w3-cmsTable tbody tr:nth-child(1) td:nth-child(2) a"
-
-
+            "common" : "input[name='isSameAsStreetAddressChecked']"
+        }
     }
 }
