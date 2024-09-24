@@ -1121,7 +1121,7 @@ __doPostBack('ctl00$MainContent$ContinueButton', ''); // Trigger postback manual
 
       await page.type('#txtOrgName', data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name, { delay: 100 });
       await page.waitForSelector("#txtMail1");
-      const combinedAddr = `${data.Payload.Incorporator_Information.Address.Inc_Address_Line1}, ${data.Payload.Incorporator_Information.Address.Inc_City}, ${data.Payload.Incorporator_Information.Address.Inc_State}, ${data.Payload.Incorporator_Information.Address.Inc_Postal_Code}`;
+      const combinedAddr = `${data.Payload.Incorporator_Information.Address.Inc_Address_Line1}, ${data.Payload.Incorporator_Information.Address.Inc_City}, ${data.Payload.Incorporator_Information.Address.Inc_State}, ${data.Payload.Incorporator_Information.Address.Inc_Zip_Code}`;
       await page.waitForSelector('#txtMail1');
       // await page.type('#txtMail1', data.Payload.Organizer_Information.Organizer_Details.Org_Name, { delay: 100 });
       await page.evaluate((address) => {
@@ -1384,7 +1384,7 @@ console.error('Failed to click the button:', error);
 
               await page.waitForSelector("#mail_zip");
 
-              await page.type('#mail_zip', data.Payload.Incorporator_Information.Address.Inc_Postal_Code);
+              await page.type('#mail_zip', data.Payload.Incorporator_Information.Address.Inc_Zip_Code);
               await randomSleep(1000, 3000);
 
               await page.waitForSelector("#mail_cntry");
@@ -1417,7 +1417,7 @@ console.error('Failed to click the button:', error);
               await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
               await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
               await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-              await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+              await page.type('#ra_zip',data.Registered_Agent.Address.RA_Zip_Code)
 
             }
             else if(data.Registered_Agent.Name){
@@ -1425,7 +1425,7 @@ console.error('Failed to click the button:', error);
                   await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
                   await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
                   await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-                  await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+                  await page.type('#ra_zip',data.Registered_Agent.Address.RA_Zip_Code)
 
 
 
@@ -1463,7 +1463,7 @@ console.error('Failed to click the button:', error);
            await page.type('#off1_name_addr1', data.Payload.Officer_Information.Address.Of_Address_Line1);
            await page.type('#off1_name_city', data.Payload.Officer_Information.Address.Of_City);
            await page.type('#off1_name_st', data.Payload.Officer_Information.Address.Of_State);
-           await page.type('#off1_name_zip', data.Payload.Officer_Information.Address.Of_Postal_Code);
+           await page.type('#off1_name_zip', data.Payload.Officer_Information.Address.Of_Zip_Code);
            await page.type('#off1_name_cntry', data.Payload.Officer_Information.Address.Of_Country)
 
             }
@@ -1657,8 +1657,9 @@ console.error('Failed to click the button:', error);
               await randomSleep(1000, 3000);
 
               await page.waitForSelector("#mail_zip");
+              await page.evaluate(()=>{})
 
-              await page.type('#mail_zip', data.Payload.Incorporator_Information.Address.Inc_Postal_Code);
+              await page.type('#mail_zip', data.Payload.Incorporator_Information.Address.Inc_Zip_Code);
               await randomSleep(1000, 3000);
 
               await page.waitForSelector("#mail_cntry");
@@ -1690,18 +1691,18 @@ console.error('Failed to click the button:', error);
               await randomSleep(1000, 3000);
               await page.type('#ra_name_title_name', parts[1]);
               await randomSleep(1000, 3000);
-              await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
-              await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
-              await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-              await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+              await page.type('#ra_addr1',data.Registered_Agent.RA_Address.RA_Address_Line1)
+              await page.type('#ra_addr2',data.Registered_Agent.RA_Address.RA_Address_Line2)
+              await page.type('#ra_city',data.Registered_Agent.RA_Address.RA_City)
+              await page.type('#ra_zip',data.Registered_Agent.RA_Address.RA_Zip_Code)
 
             }
             else if(data.Registered_Agent.Name){
                   await page.type('#ra_name_corp_name',data.Registered_Agent.Name)
-                  await page.type('#ra_addr1',data.Registered_Agent.Address.RA_Address_Line1)
-                  await page.type('#ra_addr2',data.Registered_Agent.Address.RA_Address_Line2)
-                  await page.type('#ra_city',data.Registered_Agent.Address.RA_City)
-                  await page.type('#ra_zip',data.Registered_Agent.Address.RA_Postal_Code)
+                  await page.type('#ra_addr1',data.Registered_Agent.RA_Address.RA_Address_Line1)
+                  await page.type('#ra_addr2',data.Registered_Agent.RA_Address.RA_Address_Line2)
+                  await page.type('#ra_city',data.Registered_Agent.RA_Address.RA_City)
+                  await page.type('#ra_zip',data.Registered_Agent.RA_Address.RA_Zip_Code)
 
 
 
@@ -1742,7 +1743,7 @@ console.error('Failed to click the button:', error);
                await page.type('#off1_name_addr1', data.Payload.Officer_Information.Address.Of_Address_Line1);
                await page.type('#off1_name_city', data.Payload.Officer_Information.Address.Of_City);
                await page.type('#off1_name_st', data.Payload.Officer_Information.Address.Of_State);
-               await page.type('#off1_name_zip', data.Payload.Officer_Information.Address.Of_Postal_Code);
+               await page.type('#off1_name_zip', data.Payload.Officer_Information.Address.Of_Zip_Code);
                await page.type('#off1_name_cntry', data.Payload.Officer_Information.Address.Of_Country)
     
                 }
@@ -1905,7 +1906,7 @@ console.error('Failed to click the button:', error);
               await randomSleep(1000, 3000);
           
               await page.waitForSelector(selectors.Colorado.mailing_address.zip);
-              await page.type(selectors.Colorado.mailing_address.zip, addressData.Incorporator_Information.Address.Inc_Postal_Code);
+              await page.type(selectors.Colorado.mailing_address.zip, addressData.Incorporator_Information.Address.Inc_Zip_Code);
               await randomSleep(1000, 3000);
           
               await page.waitForSelector(selectors.Colorado.mailing_address.country);
@@ -1922,6 +1923,12 @@ console.error('Failed to click the button:', error);
               const selectors =loadSelectors(jsonData.State.stateFullDesc)
                  
               await fillAddress(page,data,selectors)
+            }
+            if(data.Payload.Registered_Agent){
+
+
+
+
             }
 
 
@@ -2096,7 +2103,7 @@ console.error('Failed to click the button:', error);
 
         
             
-            document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+            document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Zip_Code;
 
             page.waitForSelector('#lbrasubmit',{visible:true,timeout:100000});
             page.evaluate(() => {
@@ -2237,7 +2244,7 @@ if(data.Payload.Registered_Agent.Name){
 
     
         
-        document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Postal_Code;
+        document.querySelector('#lbrazip').value = data.Payload.Registered_Agent.Address.RA_Zip_Code;
 
         page.waitForSelector('#lbrasubmit',{visible:true,timeout:100000});
         page.evaluate(() => {
@@ -3677,8 +3684,8 @@ async function fillNextPageCorp(page, data) {
 
             if (Dissolution_Date) {
                 Dissolution_Date.click();
-                const radio1 = document.querySelector("input#P4_DISSOLUTION_TYPE_0");
-                const radio2 = document.querySelector("input#P4_DISSOLUTION_TYPE_1");
+                const radio1 = document.querySelector("input#P3_DISSOLUTION_TYPE_0");
+                const radio2 = document.querySelector("input#P3_DISSOLUTION_TYPE_1");
 
                 if (radio1 && radio1.checked) {
                     radio1.checked = true;
@@ -3743,7 +3750,7 @@ async function fillNextPageCorp(page, data) {
             }
         }
 
-            let name=data.Payload.Incorporator_Information.Incorporator_Details.Name; 
+            let name=data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name; 
             const nameparts=name.trim().split(' ')
             if(nameparts.length === 3){
                 document.querySelector('input[name="P3_INCORP_FNAME"]').value = nameparts[0];
@@ -3765,8 +3772,8 @@ async function fillNextPageCorp(page, data) {
 
             document.querySelector('input[name="P3_INCORP_ADDR1"]').value = data.Payload.Incorporator_Information.Address.Inc_Address_Line1;
             document.querySelector('input[name="P3_INCORP_CITY"]').value = data.Payload.Incorporator_Information.Address.Inc_City;
-            document.querySelector('input[name="P3_INCORP_POSTAL_CODE"]').value = data.Payload.Incorporator_Information.Address.Inc_Postal_Code;
-            document.querySelector('input[name="P3_SIGNATURE"]').value = data.Payload.Incorporator_Information.Incorporator_Details.Name ;
+            document.querySelector('input[name="P3_INCORP_POSTAL_CODE"]').value = data.Payload.Incorporator_Information.Address.Inc_Zip_Code;
+            document.querySelector('input[name="P3_SIGNATURE"]').value = data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name ;
 
 
             // stock 
@@ -3905,14 +3912,14 @@ businessDesignator.forEach(designator => {
                   document.querySelector('#effective-date-picker').value = data.Payload.EffectiveDate.effectivedate;// Set the desired date
               });
             }
-            if(data.Payload.Stock_Information.SI_No_Of_Shares){
-              let shares=data.Payload.Stock_Information.SI_No_Of_Shares; 
+            if(data.Payload.Stock_Details.SI_No_Of_Shares){
+              let shares=data.Payload.Stock_Details.SI_No_Of_Shares; 
               if (isNaN(shares) || parseInt(shares) <= 0 || shares.length > 11) {
                 console.log("Invalid number for total shares. Please enter a positive number with a maximum of 11 digits.");
               } 
 
               await page.waitForSelector('#TotalShares',{visible: true, timeout: 120000 })
-              await page.type('#TotalShares',data.Payload.Stock_Information.SI_No_Of_Shares); 
+              await page.type('#TotalShares',data.Payload.Stock_Details.SI_No_Of_Shares); 
 
               const errorMessage = await page.$eval('.help-inline.nod_msg', el => el.innerText);
 
@@ -3948,7 +3955,7 @@ businessDesignator.forEach(designator => {
             await page.waitForSelector('#add-member-btn',{visible: true, timeout: 120000 });
             await page.click('#add-member-btn');
             await page.waitForSelector('#member-add-modal', { visible: true,timeout : 120000 });
-            await page.type('#Name', data.Payload.Incorporator_Information.Incorporator_Details.Name);
+            await page.type('#Name', data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name);
             await page.type('#StreetAddress1', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_Address_Line1);
             await page.type('#StreetAddress2', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_Address_Line2);
             await page.type('#City', data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_City); 
@@ -3957,15 +3964,15 @@ businessDesignator.forEach(designator => {
 
 
             const statecheck= document.querySelector('#State')
-            const option = Array.from(statecheck.options).find(opt => opt.text === data.Payload.Incorporator_Information.Incorporator_Details.Address.State.toUpperCase());
+            const option = Array.from(statecheck.options).find(opt => opt.text === data.Payload.Incorporator_Information.Incorporator_Details.Address.Inc_State.toUpperCase());
             if(option){
                 statecheck.value=option.value ;
             }
-            // await page.type('#Zip', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code);
+            // await page.type('#Zip', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Zip_Code);
             await page.evaluate((data) => {
               const postalInput = document.querySelector('#Zip');
               if (postalInput) {
-                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code;  // Set value directly using document.querySelector
+                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Zip_Code;  // Set value directly using document.querySelector
                 postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
               } else {
                 console.error('Postal Code input field not found');
@@ -3975,13 +3982,13 @@ businessDesignator.forEach(designator => {
             await page.evaluate((data) => {
               const postalInput = document.querySelector('#ZipPlus');
               if (postalInput) {
-                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code;  // Set value directly using document.querySelector
+                postalInput.value = data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Zip_Code;  // Set value directly using document.querySelector
                 postalInput.dispatchEvent(new Event('input', { bubbles: true }));  // Trigger input event if necessary
               } else {
                 console.error('Postal Code input field not found');
               }
             }, data); 
-            // await page.type('#ZipPlus', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Postal_Code); 
+            // await page.type('#ZipPlus', data.Payload.Incorporator_Information.Incorporator_Information.Address.Inc_Zip_Code); 
             page.on('dialog', async dialog => {
               console.log(dialog.message());
               await dialog.accept();
@@ -3994,7 +4001,7 @@ businessDesignator.forEach(designator => {
             const directAdd =await page.evaluate(()=>{
 
               return Array.from(document.querySelectorAll('#table-body tr')).some(row =>
-                row.innerText.includes(data.Payload.Incorporator_Information.Incorporator_Details.Name) 
+                row.innerText.includes(data.Payload.Incorporator_Information.Incorporator_Details.Inc_Name) 
               ); 
             }); 
 
