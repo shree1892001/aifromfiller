@@ -96,59 +96,26 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
     await setupPage(page);
     await adjustViewport(page);
     // console.log(jsonData);
-    if (jsonData.State.stateFullDesc === "New-York") {
-      await handleNy(page, jsonData);
-    } else if (jsonData.State.stateFullDesc === "West-Virginia") {
-      await handleNy(page, jsonData);
-    }
+    if (jsonData.State.stateFullDesc === "New-York" || jsonData.State.stateFullDesc === "West-Virginia" || jsonData.State.stateFullDesc === 'Delaware' || jsonData.State.stateFullDesc === 'Pennsylvania') {
+      await handleNy(page, jsonData)
+    } 
     else if (jsonData.State.stateFullDesc === "New-Jersey") {
 
       await handleNJ(page, jsonData);
 
     }
-    else if (jsonData.State.stateFullDesc === "Florida" || jsonData.state.stateFullDesc === "Colorado") {
+    else if (jsonData.State.stateFullDesc === "Florida" || jsonData.State.stateFullDesc === "Colorado"  || jsonData.State.stateFullDesc === "Nebraska" ) {
       await handleFL(page, jsonData);
     }
     else if (jsonData.State.stateFullDesc === "Wyoming") {
 
       await handleWy(page, jsonData);
 
-    } else if (jsonData.State.stateFullDesc === "Nebraska") {
-      await handleFL(page, jsonData);
-    }
+    } 
    
-    else if (jsonData.State.stateFullDesc === 'Delaware') {
-      await handleNy(page, jsonData);
+    
 
-
-    }
-
-    else if (jsonData.State.stateFullDesc === 'Pennsylvania') {
-      await handleNy(page, jsonData);
-
-
-    }
-    async function handlewJ(page, jsonData) {
-      await retry(async () => {
-        try {
-          // sendWebSocketMessage('Navigating to the login page...');
-          console.log("Navigating to the login page...");
-          // const response = await page.goto("https://filings.dos.ny.gov/ords/corpanc/r/ecorp/login_desktop", {
-          const response = await page.goto(jsonData.State.stateUrl, {
-
-            waitUntil: 'networkidle0',
-            timeout: 60000
-          });
-          log('Login page loaded.');
-        } catch (error) {
-          console.error("Error navigating to the login page:", error.message);
-          throw new Error("Navigation to the login page failed.");
-        }
-      }, 5, page);
-
-
-
-    }
+    
 
 
     async function handleNJ(page, jsonData) {
@@ -447,7 +414,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
 
         await page.type('input[name="ctl00$MainContent$ucRA$txtPhone"]', data.Payload.Registered_Agent.RA_Contact_No, { delay: 100 });
-        await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address_Address, { delay: 100 });
+        await page.type('input[name="ctl00$MainContent$ucRA$txtEmail"]', data.Payload.Registered_Agent.Contact.RA_Email_Address, { delay: 100 });
 
         await page.click('input[name="ctl00$MainContent$ucRA$chkRAConsent"]');
         await page.click('#ContinueButton')
@@ -1181,6 +1148,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
     if (data.stateFullDesc == 'Florida') {
       if (data.orderShortName == 'LLC') {
+
 
         await retry(async () => {
 
@@ -1925,13 +1893,4057 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
 
               await fillAddress(page, data, selectors)
             }
-            if (data.Registered_Agent) {
-              await page.waitForSelector(".w3-margin-button");
+            function validateInput(value,maxL,minL) {
+              const maxLength = maxL;
+              const minLength = minL;
+              const pattern = /^[\x00-\x7F]+$/;  // Matches ASCII characters only
+          
+              if (value.length > maxLength) {
+                  throw new Error(`Input exceeds the maximum length of ${maxLength} characters.`);
+              }
+          
+              if (value.length < minLength) {
+                  throw new Error(`Input must be at least ${minLength} character long.`);
+              }
+          
+              if (!pattern.test(value)) {
+                  throw new Error('Input contains non-ASCII characters.');
+              }
+          
+              return true;  // If all validations pass
+          }
+            
+8if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
 
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
 
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
 
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
 
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+8if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+vvvvvvvvvvvvvvvvvvvvvvvVVVVVVVVVVVVVVVVvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvVVVVVVVVVvvvvvvvvvvVVVVvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvif (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+vvvvvvvvvvvvvvvvvvvvvvvvvif (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
             }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+    console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  console.log(`Successfully filled field: ${selector}`);
+}
+if (data.Payload.Registered_Agent) {
+    await page.waitForSelector(".w3-margin-button");
+
+    // Check if the Registered Agent is an Individual
+    if (data.Payload.Registered_Agent.agentType === "Individual") {
+        await page.click('input[name="nameTyp"][value="I"]');
+
+        await page.waitForSelector('input[name="individualName-firstName"');
+        await page.evaluate((data) => {
+            const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+            const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+
+            const legalName = document.querySelector('input[name="individualName-firstName"]');
+            const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+
+            if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+                legalName.value = firstname;
+                legalNameSec.value = lastname;
+            }
+        }, data);
+
+    // Check if the Registered Agent is an Entity
+    } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+        await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+        await page.click('input[name="nameTyp"][value="O"]');
+        await page.waitForSelector('input[name="orgName"]');
+        await page.evaluate((data) => {
+            document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+        }, data);
+    }
+
+    // Fill the address form
+    await fillAddressForm(page, {
+        streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+        streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+        city: data.Payload.Registered_Agent.address.city,
+        zipCode: data.Payload.Registered_Agent.address.zipCode
+    });
+}
+
+// Function to handle filling the entire address form
+async function fillAddressForm(page, data) {
+    // Validation rules for each input field
+    const fieldRules = {
+        '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+        '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+        '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+    };
+
+    // Validate and fill Address 1 (required)
+    await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+
+    // Validate and fill Address 2 (optional)
+    await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+
+    // Validate and fill City (required)
+    await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+
+    // Log the State since it's predefined as "CO"
+    console.log('State: CO (predefined)');
+
+    // Validate and fill ZIP Code (required)
+    await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+}
+
+// Generic function to validate and fill a field based on JSON data
+async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+    // Check if the field is required and the value is empty
+    if (required && !value) {
+        throw new Error(`The field '${selector}' is required but no value was provided.`);
+    }
+
+    // If the field is optional and value is empty, skip the validation and input
+    if (!required && !value) {
+        console.log(`Optional field '${selector}' is not provided, skipping.`);
+        return;
+    }
+
+    // Validate the input based on the provided rules
+    if (value.length > maxLength) {
+        throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+    }
+
+    if (value.length < minLength) {
+        throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+    }
+
+    if (!pattern.test(value)) {
+        throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+    }
+
+    // Fill the field with the validated value
+    await page.type(selector, value);
+
+        }          
 
 
 
@@ -4051,7 +8063,14 @@ async function fillNextPageCorp(page, data) {
       await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
 
       await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
-      await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email_Address);
+
+      await page.waitForSelector('#RegisteredAgentEmail', { visible: true, timeout: 10000 });
+  
+      await page.evaluate((data)=>{
+        const Email = document.querySelector("#RegisteredAgentEmail");
+        Email.value= data.Payload.Registered_Agent.RA_Email_Address;
+      
+      },data);
       await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
       await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
       await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City)
@@ -4475,7 +8494,12 @@ async function fillNextPage(page, data) {
       await page.waitForSelector('#RegisteredAgentName', { visible: true, timeout: 10000 });
       
       await page.type('#RegisteredAgentName', data.Payload.Registered_Agent.RA_Name);
-      await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email_Address);
+      await page.evaluate((data)=>{
+        const Email = document.querySelector("#RegisteredAgentEmail");
+        Email.value= data.Payload.Registered_Agent.RA_Email_Address;
+      
+      },data);
+      // await page.type('#RegisteredAgentEmail', data.Payload.Registered_Agent.RA_Email_Address);
       await page.type('#OfficeAddress1', data.Payload.Registered_Agent.RA_Address.RA_Address_Line1);
       await page.type('#OfficeAddress2', data.Payload.Registered_Agent.RA_Address.RA_Address_Line2);
       await page.type('#OfficeCity', data.Payload.Registered_Agent.RA_Address.RA_City);
