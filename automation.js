@@ -1733,16 +1733,292 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       }
 
     }
-   
+    if (data.State.stateFullDesc == 'Colorado') {
+      if (data.orderShortName == 'LLC') {
+  
+        await retry(async () => {
+  
+          try {
+            console.log("Navigating to the Landing page...");
+  
+  
+            await page.goto(jsonData.State.stateUrl, {
+              waitUntil: 'networkidle0',
+              timeout: 60000
+            });
+            console.log('Landing Page Loaded');
+          } catch (error) {
+            console.error("Error navigating to the Landing page:", error.message);
+            throw new Error("Navigation to the Landing page failed.");
+          }
+        }, 5, page);
+  
+        await randomSleep(3000, 5000);
+        await performEventsonLandingPage(page);
+  
+        await adjustViewport(page);
+  
+        console.log("Waiting for the list to appear...");
+  
+        async function performEventsonLandingPage(page) {
+          try {
+  
+            await page.waitForSelector('.w3-ulcontents');
+            await page.evaluate(() => {
+              const link = document.querySelector('.w3-ulcontents a[href="#LLC"]');
+              if (link) {
+                link.click();
+              }
+            });
+            await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 120000 });
+            await page.waitForSelector('.w3-table.w3-cmsTable');
+            await page.evaluate(() => {
+              const link = document.querySelector('.w3-table.w3-cmsTable tbody tr:nth-child(1) td:nth-child(2) a');
+              if (link) {
+                link.click();
+              }
+            });
+            await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 120000 });
+  
+            await page.waitForSelector('input.w3-btn-next[type="button"]');
+            await page.evaluate(() => {
+              document.querySelector('input.w3-btn-next[type="button"]').click();
+            });
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+            try {
+  
+  
+              await page.waitForSelector('#name', { timeout: 5000 });
+              let legalName = data.Payload.Name.CD_Legal_Name;
+  
+              if (legalName.length > 200) {
+                throw new Error('Input exceeds the maximum length of 200 characters.');
+              }
+  
+              if (!/^[\x00-\x7F]+$/.test(legalName)) {
+                throw new Error('Input contains non-ASCII characters.');
+              }
+  
+              await page.type('#name', legalName, { delay: 100 });
+  
+              const filledValue = await page.$eval('#name', el => el.value);
+              console.log('Filled input value:', filledValue);
+  
+  
+  
+            } catch (error) {
+              let errorResponse = {
+                success: false,
+                error: e.message
+              };
+              if (e.message.includes(("The name contains Ascii characters"))) {
+                errorResponse.error = e.message;
+              }
+            }
+            async function fillAddress(page, addressData, selectors) {
+              await page.waitForSelector(selectors.Colorado.principal_address.address1);
+              await page.type(selectors.Colorado.principal_address.address1, addressData.Principal_Address.PA_Address_Line1);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.principal_address.address2);
+              await page.type(selectors.Colorado.principal_address.address2, addressData.Principal_Address.PA_Address_Line2);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.principal_address.city);
+              await page.type(selectors.Colorado.principal_address.city, addressData.Principal_Address.PA_City);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.principal_address.state);
+              await page.type(selectors.Colorado.principal_address.state, addressData.Principal_Address.PA_State);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.principal_address.zip);
+  
+  
+              await page.evaluate(() => {
+  
+                const zip = document.querySelector(selectors.Colorado.principal_address.zip);
+                zip.value = addressData.Principal_Address.PA_Zip_Code;
+              })
+              // await page.type(selectors.Colorado.principal_address.zip, addressData.Principal_Address.PA_Zip_Code);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.principal_address.country);
+              await page.type(selectors.Colorado.principal_address.country, addressData.Principal_Address.PA_Country);
+              await randomSleep(1000, 3000);
+  
+              if (addressData.Incorporator_Information.Address.Inc_Address_Line1 === addressData.Principal_Address.PA_Address_Line1) {
+                await page.waitForSelector(selectors.Colorado.common_address.common);
+                console.log(selectors.Colorado.common_address.common);
+                await page.click(selectors.Colorado.common_address.common);
+                await randomSleep(1000, 3000);
+              } else {
+                await fillMailingAddress(page, addressData, selectors);
+              }
+            }
+  
+            async function fillMailingAddress(page, addressData, selectors) {
+              await page.waitForSelector(selectors.Colorado.mailing_address.address1);
+              await page.type(selectors.Colorado.mailing_address.address1, addressData.Incorporator_Information.Address.Inc_Address_Line1);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.mailing_address.address2);
+              await page.type(selectors.Colorado.mailing_address.address2, addressData.Incorporator_Information.Address.Inc_Address_Line2);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.mailing_address.city);
+              await page.type(selectors.Colorado.mailing_address.city, addressData.Incorporator_Information.Address.Inc_City);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.mailing_address.state);
+              await page.type(selectors.Colorado.mailing_address.state, addressData.Incorporator_Information.Address.Inc_State);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.mailing_address.zip);
+              await page.type(selectors.Colorado.mailing_address.zip, addressData.Incorporator_Information.Address.Inc_Zip_Code);
+              await randomSleep(1000, 3000);
+  
+              await page.waitForSelector(selectors.Colorado.mailing_address.country);
+              await page.type(selectors.Colorado.mailing_address.country, addressData.Incorporator_Information.Address.Inc_Country);
+              await randomSleep(1000, 3000);
+            }
+  
+            if (data.Payload.Principal_Address) {
+              const selectors = loadSelectors(jsonData.State.stateFullDesc);
+              await fillAddress(page, data, selectors);
+            }
+  
+            if (data.Payload.Principal_Address) {
+              const selectors = loadSelectors(jsonData.State.stateFullDesc)
+  
+              await fillAddress(page, data, selectors)
+            }
+            function validateInput(value,maxL,minL) {
+              const maxLength = maxL;
+              const minLength = minL;
+              const pattern = /^[\x00-\x7F]+$/;  // Matches ASCII characters only
+          
+              if (value.length > maxLength) {
+                  throw new Error(`Input exceeds the maximum length of ${maxLength} characters.`);
+              }
+          
+              if (value.length < minLength) {
+                  throw new Error(`Input must be at least ${minLength} character long.`);
+              }
+          
+              if (!pattern.test(value)) {
+                  throw new Error('Input contains non-ASCII characters.');
+              }
+          
+              return true;  // If all validations pass
+          }
+            
+  if (data.Payload.Registered_Agent) {
+  await page.waitForSelector(".w3-margin-button");
+  
+  // Check if the Registered Agent is an Individual
+  if (data.Payload.Registered_Agent.agentType === "Individual") {
+      await page.click('input[name="nameTyp"][value="I"]');
+  
+      await page.waitForSelector('input[name="individualName-firstName"');
+      await page.evaluate((data) => {
+          const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
+          const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
+  
+          const legalName = document.querySelector('input[name="individualName-firstName"]');
+          const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
+  
+          if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
+              legalName.value = firstname;
+              legalNameSec.value = lastname;
+          }
+      }, data);
+  
+  // Check if the Registered Agent is an Entity
+  } else if (data.Payload.Registered_Agent.agentType == "Entity") {
+      await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
+      await page.click('input[name="nameTyp"][value="O"]');
+      await page.waitForSelector('input[name="orgName"]');
+      await page.evaluate((data) => {
+          document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
+      }, data);
+  }
+  
+  // Fill the address form
+  await fillAddressForm(page, {
+      streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
+      streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
+      city: data.Payload.Registered_Agent.address.city,
+      zipCode: data.Payload.Registered_Agent.address.zipCode
+  });
+  }
+  
+  // Function to handle filling the entire address form
+  async function fillAddressForm(page, data) {
+  // Validation rules for each input field
+  const fieldRules = {
+      '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
+      '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
+      '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
+  };
+  
+  // Validate and fill Address 1 (required)
+  await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
+  
+  // Validate and fill Address 2 (optional)
+  await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
+  
+  // Validate and fill City (required)
+  await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
+  
+  // Log the State since it's predefined as "CO"
+  console.log('State: CO (predefined)');
+  
+  // Validate and fill ZIP Code (required)
+  await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
+  }
+  
+  // Generic function to validate and fill a field based on JSON data
+  async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
+  // Check if the field is required and the value is empty
+  if (required && !value) {
+      throw new Error(`The field '${selector}' is required but no value was provided.`);
+  }
+  
+  // If the field is optional and value is empty, skip the validation and input
+  if (!required && !value) {
+      console.log(`Optional field '${selector}' is not provided, skipping.`);
+      return;
+  }
+  
+  // Validate the input based on the provided rules
+  if (value.length > maxLength) {
+      throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
+  }
+  
+  if (value.length < minLength) {
+      throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
+  }
+  
+  if (!pattern.test(value)) {
+      throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
+  }
+  
+  // Fill the field with the validated value
+  await page.type(selector, value);
+  
+  
+  
+  console.log(`Successfully filled field: ${selector}`);
+  }
+          
 
-    }
+        
+  
 
-
-
-
-
-
-
+    
+  
 
 
 else if (data.stateFullDesc == "Nebraska") {
@@ -4441,284 +4717,52 @@ async function fillNextPage(page, data) {
       }
     });
   }
-  if (data.State.stateFullDesc == 'Colorado') {
-    if (data.orderShortName == 'LLC') {
-
-      await retry(async () => {
-
-        try {
-          console.log("Navigating to the Landing page...");
+}
+ 
 
 
-          await page.goto(jsonData.State.stateUrl, {
-            waitUntil: 'networkidle0',
-            timeout: 60000
+        function isNetworkError(error) {
+          return ['ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET','ERR_CONNECTION_RESET','ERR_CONNECTION_REFUSED'].includes(error.code);
+      }
+      
+      async function retry(fn, retries = 3,page) {
+          for (let i = 0; i < retries; i++) {
+              try {
+                  return await fn();
+              } catch (error) {
+                  if(isNetworkError(error)){
+                      console.error(`Network error occured : ${error.message} ...Error reloading the script `)
+                      await page.reload({waitUntil : 'networkidle0' })
+                  }
+                  if (i === retries - 1) throw error;
+              }
+          }
+      }
+    }
+      async function adjustViewport(page) {
+          const { innerWidth, innerHeight } = await page.evaluate(() => {
+              return {
+                  innerWidth: window.innerWidth,
+                  innerHeight: window.innerHeight,
+              };
           });
-          console.log('Landing Page Loaded');
-        } catch (error) {
-          console.error("Error navigating to the Landing page:", error.message);
-          throw new Error("Navigation to the Landing page failed.");
-        }
-      }, 5, page);
-
-      await randomSleep(3000, 5000);
-      await performEventsonLandingPage(page);
-
-      await adjustViewport(page);
-
-      console.log("Waiting for the list to appear...");
-
-      async function performEventsonLandingPage(page) {
-        try {
-
-          await page.waitForSelector('.w3-ulcontents');
-          await page.evaluate(() => {
-            const link = document.querySelector('.w3-ulcontents a[href="#LLC"]');
-            if (link) {
-              link.click();
-            }
+      
+          await page.setViewport({
+              width: innerWidth,
+              height: innerHeight,
+              deviceScaleFactor: 1,
           });
-          await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 120000 });
-          await page.waitForSelector('.w3-table.w3-cmsTable');
-          await page.evaluate(() => {
-            const link = document.querySelector('.w3-table.w3-cmsTable tbody tr:nth-child(1) td:nth-child(2) a');
-            if (link) {
-              link.click();
-            }
-          });
-          await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 120000 });
-
-          await page.waitForSelector('input.w3-btn-next[type="button"]');
-          await page.evaluate(() => {
-            document.querySelector('input.w3-btn-next[type="button"]').click();
-          });
-          await page.waitForNavigation({ waitUntil: 'networkidle0' });
-          try {
-
-
-            await page.waitForSelector('#name', { timeout: 5000 });
-            let legalName = data.Payload.Name.CD_Legal_Name;
-
-            if (legalName.length > 200) {
-              throw new Error('Input exceeds the maximum length of 200 characters.');
-            }
-
-            if (!/^[\x00-\x7F]+$/.test(legalName)) {
-              throw new Error('Input contains non-ASCII characters.');
-            }
-
-            await page.type('#name', legalName, { delay: 100 });
-
-            const filledValue = await page.$eval('#name', el => el.value);
-            console.log('Filled input value:', filledValue);
-
-
-
-          } catch (error) {
-            let errorResponse = {
-              success: false,
-              error: e.message
-            };
-            if (e.message.includes(("The name contains Ascii characters"))) {
-              errorResponse.error = e.message;
-            }
-          }
-          async function fillAddress(page, addressData, selectors) {
-            await page.waitForSelector(selectors.Colorado.principal_address.address1);
-            await page.type(selectors.Colorado.principal_address.address1, addressData.Principal_Address.PA_Address_Line1);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.principal_address.address2);
-            await page.type(selectors.Colorado.principal_address.address2, addressData.Principal_Address.PA_Address_Line2);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.principal_address.city);
-            await page.type(selectors.Colorado.principal_address.city, addressData.Principal_Address.PA_City);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.principal_address.state);
-            await page.type(selectors.Colorado.principal_address.state, addressData.Principal_Address.PA_State);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.principal_address.zip);
-
-
-            await page.evaluate(() => {
-
-              const zip = document.querySelector(selectors.Colorado.principal_address.zip);
-              zip.value = addressData.Principal_Address.PA_Zip_Code;
-            })
-            // await page.type(selectors.Colorado.principal_address.zip, addressData.Principal_Address.PA_Zip_Code);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.principal_address.country);
-            await page.type(selectors.Colorado.principal_address.country, addressData.Principal_Address.PA_Country);
-            await randomSleep(1000, 3000);
-
-            if (addressData.Incorporator_Information.Address.Inc_Address_Line1 === addressData.Principal_Address.PA_Address_Line1) {
-              await page.waitForSelector(selectors.Colorado.common_address.common);
-              console.log(selectors.Colorado.common_address.common);
-              await page.click(selectors.Colorado.common_address.common);
-              await randomSleep(1000, 3000);
-            } else {
-              await fillMailingAddress(page, addressData, selectors);
-            }
-          }
-
-          async function fillMailingAddress(page, addressData, selectors) {
-            await page.waitForSelector(selectors.Colorado.mailing_address.address1);
-            await page.type(selectors.Colorado.mailing_address.address1, addressData.Incorporator_Information.Address.Inc_Address_Line1);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.mailing_address.address2);
-            await page.type(selectors.Colorado.mailing_address.address2, addressData.Incorporator_Information.Address.Inc_Address_Line2);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.mailing_address.city);
-            await page.type(selectors.Colorado.mailing_address.city, addressData.Incorporator_Information.Address.Inc_City);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.mailing_address.state);
-            await page.type(selectors.Colorado.mailing_address.state, addressData.Incorporator_Information.Address.Inc_State);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.mailing_address.zip);
-            await page.type(selectors.Colorado.mailing_address.zip, addressData.Incorporator_Information.Address.Inc_Zip_Code);
-            await randomSleep(1000, 3000);
-
-            await page.waitForSelector(selectors.Colorado.mailing_address.country);
-            await page.type(selectors.Colorado.mailing_address.country, addressData.Incorporator_Information.Address.Inc_Country);
-            await randomSleep(1000, 3000);
-          }
-
-          if (data.Payload.Principal_Address) {
-            const selectors = loadSelectors(jsonData.State.stateFullDesc);
-            await fillAddress(page, data, selectors);
-          }
-
-          if (data.Payload.Principal_Address) {
-            const selectors = loadSelectors(jsonData.State.stateFullDesc)
-
-            await fillAddress(page, data, selectors)
-          }
-          function validateInput(value,maxL,minL) {
-            const maxLength = maxL;
-            const minLength = minL;
-            const pattern = /^[\x00-\x7F]+$/;  // Matches ASCII characters only
-        
-            if (value.length > maxLength) {
-                throw new Error(`Input exceeds the maximum length of ${maxLength} characters.`);
-            }
-        
-            if (value.length < minLength) {
-                throw new Error(`Input must be at least ${minLength} character long.`);
-            }
-        
-            if (!pattern.test(value)) {
-                throw new Error('Input contains non-ASCII characters.');
-            }
-        
-            return true;  // If all validations pass
-        }
-          
-if (data.Payload.Registered_Agent) {
-await page.waitForSelector(".w3-margin-button");
-
-// Check if the Registered Agent is an Individual
-if (data.Payload.Registered_Agent.agentType === "Individual") {
-    await page.click('input[name="nameTyp"][value="I"]');
-
-    await page.waitForSelector('input[name="individualName-firstName"');
-    await page.evaluate((data) => {
-        const firstname = data.Registered_Agent.RA_Name.split(" ")[0];
-        const lastname = data.Registered_Agent.RA_Name.split(" ")[1];
-
-        const legalName = document.querySelector('input[name="individualName-firstName"]');
-        const legalNameSec = document.querySelector('input[name="individualName-lastName"]');
-
-        if (validateInput(firstname, 20, 1) || validateInput(lastname, 25, 2)) {
-            legalName.value = firstname;
-            legalNameSec.value = lastname;
-        }
-    }, data);
-
-// Check if the Registered Agent is an Entity
-} else if (data.Payload.Registered_Agent.agentType == "Entity") {
-    await page.waitForSelector('input[name="nameTyp"][value="O"]', { visible: true });
-    await page.click('input[name="nameTyp"][value="O"]');
-    await page.waitForSelector('input[name="orgName"]');
-    await page.evaluate((data) => {
-        document.querySelector('input[name="orgName"]').value = data.Registered_Agent.RA_Name;
-    }, data);
-}
-
-// Fill the address form
-await fillAddressForm(page, {
-    streetAddress1: data.Payload.Registered_Agent.address.streetAddress1, // Adjust these paths based on your data structure
-    streetAddress2: data.Payload.Registered_Agent.address.streetAddress2,
-    city: data.Payload.Registered_Agent.address.city,
-    zipCode: data.Payload.Registered_Agent.address.zipCode
-});
-}
-
-// Function to handle filling the entire address form
-async function fillAddressForm(page, data) {
-// Validation rules for each input field
-const fieldRules = {
-    '#streetAddress-address1': { required: true, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },
-    '#streetAddress-address2': { required: false, minLength: 2, maxLength: 50, pattern: /^[\x00-\x7F]+$/ },  // Optional
-    '#streetAddress-city': { required: true, minLength: 2, maxLength: 35, pattern: /^[\x00-\x7F]+$/ },
-    '#streetAddress-zip': { required: true, minLength: 2, maxLength: 15, pattern: /^[\x00-\x7F]+$/ }
-};
-
-// Validate and fill Address 1 (required)
-await validateAndFillField(page, '#streetAddress-address1', data.streetAddress1, fieldRules['#streetAddress-address1']);
-
-// Validate and fill Address 2 (optional)
-await validateAndFillField(page, '#streetAddress-address2', data.streetAddress2, fieldRules['#streetAddress-address2']);
-
-// Validate and fill City (required)
-await validateAndFillField(page, '#streetAddress-city', data.city, fieldRules['#streetAddress-city']);
-
-// Log the State since it's predefined as "CO"
-console.log('State: CO (predefined)');
-
-// Validate and fill ZIP Code (required)
-await validateAndFillField(page, '#streetAddress-zip', data.zipCode, fieldRules['#streetAddress-zip']);
-}
-
-// Generic function to validate and fill a field based on JSON data
-async function validateAndFillField(page, selector, value, { minLength, maxLength, pattern, required }) {
-// Check if the field is required and the value is empty
-if (required && !value) {
-    throw new Error(`The field '${selector}' is required but no value was provided.`);
-}
-
-// If the field is optional and value is empty, skip the validation and input
-if (!required && !value) {
-    console.log(`Optional field '${selector}' is not provided, skipping.`);
-    return;
-}
-
-// Validate the input based on the provided rules
-if (value.length > maxLength) {
-    throw new Error(`Input for field '${selector}' exceeds the maximum length of ${maxLength} characters.`);
-}
-
-if (value.length < minLength) {
-    throw new Error(`Input for field '${selector}' must be at least ${minLength} characters long.`);
-}
-
-if (!pattern.test(value)) {
-    throw new Error(`Input for field '${selector}' contains invalid characters (non-ASCII).`);
-}
-
-// Fill the field with the validated value
-await page.type(selector, value);
-console.log(`Successfully filled field: ${selector}`);
-}
-        }catch(e){}
-
+      }
+      
+      
+      
+      
+      app.listen(port, () => {
+          console.log(`Server listening at http://localhost:${port}`);
+      });
+      
+      
+      
 
 
     
@@ -4726,5 +4770,6 @@ console.log(`Successfully filled field: ${selector}`);
 
 
 
+      
 
-
+    
