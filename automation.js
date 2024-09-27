@@ -2012,7 +2012,54 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
   
   console.log(`Successfully filled field: ${selector}`);
   }
-          }catch(e){
+
+  await page.waitForSelector('input[name="agentConsentRadio"]');
+  await page.evalute(()=>{
+
+    const btn=document.querySelector('input[name="agentConsentRadio"][value="Y"]');
+    btn.click();
+  })
+  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 120000 });
+
+  // Check for error messages after navigation
+  const alertSelector = '.w3-modal';
+  const errorMessage = 'Address must be in Colorado.';
+
+  const alertVisible = await page.evaluate((alertSelector) => {
+    const alert = document.querySelector(alertSelector);
+    if(alert){
+    const btn=document.querySelector("button.w3-btn-cancel");
+    if(btn){
+        btn.click();
+    }
+    }
+    return alert ;
+  }, alertSelector);
+await page.waitForSelector('input[name="managedBy"]');
+
+    await page.evaluate((data) => {
+        const managedByRadio = document.querySelector(`input[name="managedBy"][value="${data.Payload.Memeber_Or_Manager.Mom_Memeber_Or_Manager}"]`);
+        if (managedByRadio) {
+            managedByRadio.click();
+        }
+    }, data);
+
+    await page.waitForSelector('input[name="hasOneMember"]');
+
+    await page.evaluate((data) => {
+        const hasOneMemberRadio = document.querySelector(`input[name="hasOneMember"][value="${data.Payload.Memeber_Or_Manager.Mom_Memeber_Or_Manager}"]`);
+        if (hasOneMemberRadio) {
+            hasOneMemberRadio.click();
+        }
+    }, data);
+    
+
+
+
+    
+
+  
+ }catch(e){
             throw new e;
           }
           
