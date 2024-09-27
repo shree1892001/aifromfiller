@@ -2012,7 +2012,12 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
   
   console.log(`Successfully filled field: ${selector}`);
   }
+          }catch(e){
+            throw new e;
+          }
           
+        }
+    }
 
         
   
