@@ -1733,7 +1733,7 @@ async function runPuppeteerScript(apiEndpoint, requestPayload, retryCount = 0) {
       }
 
     }
-    if (data.State.stateFullDesc == 'Colorado') {
+    else if (data.State.stateFullDesc == 'Colorado') {
       if (data.orderShortName == 'LLC') {
   
         await retry(async () => {
