@@ -19,6 +19,7 @@ function loadSelectors(stateFullDesc) {
 const path = require('path');
 const { timeout } = require('puppeteer');
 const { evaluationString } = require('puppeteer');
+const { off } = require('process');
 
 
 
@@ -2052,7 +2053,244 @@ await page.waitForSelector('input[name="managedBy"]');
             hasOneMemberRadio.click();
         }
     }, data);
+
+    await page.waitForSelector('.w3-margin-bottom', { visible: true,timeout:120000 });
+
+    if(data.Payload.Organizer_Information){
+  
+       
+    }
+    if(data.Payload.EffectiveDate){
+
+      await page.waitForSelector('input[name="dedSelectRadio"][value="Y"]',{visible:true ,timeout:120000} ); 
+
+      await page.click('input[name="dedSelectRadio"][value="Y"]'); 
+    }
+    await page.waitForSelector('input[name="perjuryNoticeAffirmed"]',{visible:true, timeout:12000}); 
+    await page.click('input[name="perjuryNoticeAffirmed"]'); 
+
+    await page.waitForSelector('input[name="sameAsFormer"]',{visible:true,timeout:10000}); 
+    if(data.Payload.Organizer_Information === data.Payload.Filer_Information){
+    await page.click('input[name="sameAsFormer"]'); 
+    }else{
+        //  let firstName= data.Payload.Organizer_Information.Organizer_Details.Org_Name.split(" ")[0]; 
+        //  let lastName=data.Payload.Organizer_Information.Organizer_Details.Org_Name.split(" ")[1]; 
+        //  await page.waitForSelector("#name-firstName",{visible:true,timeout:120000});
+        //  await page.evaluate((firstName,lastName)=>{
+
+        //      const fname=document.querySelector('#name-firstName'); 
+        //      fname.value=firstName; 
+
+        //      const sname=document.querySelector('#name-lastName'); 
+        //      sname.value=lastName; 
+        //  },firstName,lastName); 
+        try {
+          await page.waitForSelector("#name-firstName", { visible: true, timeout: 120000 });
+      
+          // Use page.evaluate to handle the form filling and dropdown selection in one go
+          await page.evaluate((data) => {
+              // Extract first and last names
+              const firstName = data.Payload.Organizer_Information.Organizer_Details.Org_Name.split(" ")[0]; 
+              const lastName = data.Payload.Organizer_Information.Organizer_Details.Org_Name.split(" ")[1]; 
+      
+              // Fill in First Name and validate
+              const fname = document.querySelector('#name-firstName'); 
+              fname.value = firstName; 
+              if (fname.value.length < 2 || fname.value.length > 35 || !/[\x00-\x7F]+/.test(fname.value)) {
+                  throw new Error('First Name validation failed.');
+              }
+      
+              // Fill in Last Name and validate
+              const lname = document.querySelector('#name-lastName'); 
+              lname.value = lastName;
+              if (lname.value.length < 2 || lname.value.length > 35 || !/[\x00-\x7F]+/.test(lname.value)) {
+                  throw new Error('Last Name validation failed.');
+              }
+      
+              // Fill in Address 1 and validate
+              const address1 = data.Payload.Organizer_Information.Org_Address.Org_Address_Line1;
+              const addressField1 = document.querySelector('#address-address1');
+              addressField1.value = address1;
+              if (addressField1.value.length < 2 || addressField1.value.length > 50 || !/[\x00-\x7F]+/.test(addressField1.value)) {
+                  throw new Error('Address 1 validation failed.');
+              }
+      
+              // Fill in Address 2 (optional)
+              
+      
+              // Fill in City and validate
+              const city = data.Payload.Organizer_Information.Org_Address.Org_City; 
+              const cityField = document.querySelector('#address-city');
+              cityField.value = city;
+              if (cityField.value.length < 2 || cityField.value.length > 35 || !/[\x00-\x7F]+/.test(cityField.value)) {
+                  throw new Error('City validation failed.');
+              }
+      
+              // Select State from dropdown
+              const stateDropdown = document.querySelector('#address-state');
+              const stateOption = Array.from(stateDropdown.options).find(opt => opt.text.trim() === data.Payload.Organizer_Information.Org_Address.Org_State); // Example: NY
+              if (stateOption) {
+                  stateDropdown.value = stateOption.value;
+                  stateDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+              } else {
+                  throw new Error('State selection failed.');
+              }
+      
+              // Validate State (already selected through selectOptionByText)
+              if (!stateDropdown.value) {
+                  throw new Error('State must be selected.');
+              }
+      
+              // Fill in ZIP Code and validate
+              const zip = data.Payload.Organizer_Information.Org_Address.Org_Zip_Code; // Example ZIP code
+              const zipField = document.querySelector('#address-zip');
+              zipField.value = zip;
+              if (zipField.value.length < 2 || zipField.value.length > 15 || !/[\x00-\x7F]+/.test(zipField.value)) {
+                  throw new Error('ZIP Code validation failed.');
+              }
+      
+              // Fill in Province (optional)
+              const provinceField = document.querySelector('#address-province');
+              provinceField.value = data.Payload.Organizer_Information.Org_Address.Org_State; // Optional
+      
+              // Select Country from dropdown
+              const countryDropdown = document.querySelector('#address-country');
+              const countryOption = Array.from(countryDropdown.options).find(opt => opt.text.trim() === 'US');
+              if (countryOption) {
+                  countryDropdown.value = countryOption.value;
+                  countryDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+              } else {
+                  throw new Error('Country selection failed.');
+              }
+      
+              // Validate Country
+              if (!countryDropdown.value) {
+                  throw new Error('Country must be selected.');
+              }
+      
+              // Click the submit button
+              const submitButton = document.querySelector('#submit-button');
+              if (submitButton) {
+                  submitButton.click();
+              } else {
+                  throw new Error('Submit button not found.');
+              }
+          }, data);
+      
+          // Wait for form submission or page navigation
+          await page.waitForNavigation({waitUntil:'networkidle0'});
+          console.log('Form submitted successfully!');
+      } catch (error) {
+          console.error('Error:', error.message);
+      } 
+      await page.evaluate((data) => {
+        const emailYes = document.querySelector('input[name="emailNotificationRadio"][value="Y"]');
+        const emailNo = document.querySelector('input[name="emailNotificationRadio"][value="N"]');
+        
+        if (data.Payload.Notification_Information.Notification_Details.Email=== 'Y') {
+          emailYes.checked = true;
+          emailYes.dispatchEvent(new Event('change', { bubbles: true }));
+          emailYes.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Email input fields for sending notifications
+      const emailInput = document.querySelector('#emailId');
+      const retypeEmailInput = document.querySelector('#reTypeEmailId');
+
+      // Set values for email and retype email fields
+      emailInput.value = data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address;
+      retypeEmailInput.value = data.Payload.Organizer_Information.Organizer_Details.Org_Email_Address;
+
+      // Validation logic based on the HTML attributes
+      const emailPattern = /^[\x00-\x7F]+$/;
+      if (!emailInput.required || !retypeEmailInput.required) {
+        throw new Error("Both email fields are required.");
+      }
+      if (email.length > 150 || verifyEmail.length > 150) {
+        throw new Error("Email exceeds the maximum length of 150 characters.");
+      }
+      if (!emailPattern.test(email) || !emailPattern.test(verifyEmail)) {
+        throw new Error("Email does not match the required pattern.");
+      }
+      if (email !== verifyEmail) {
+        throw new Error("The emails do not match.");
+      }
+
+      // Trigger validation events
+      emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+      retypeEmailInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    }  else if (data.Payload.Notification_Information.Notification_Details.Email === 'N') {
+          emailNo.checked = true;
+          emailNo.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, data);
     
+      // Handle text notification radio button
+      await page.evaluate((data) => {
+        const textYes = document.querySelector('input[name="textNotificationRadio"][value="Y"]');
+        const textNo = document.querySelector('input[name="textNotificationRadio"][value="N"]');
+        
+        if (data.Payload.Notification_Information.Notification_Details.Text === 'Y') {
+          textYes.checked = true;
+          const areaCodeInput = document.querySelector('#textAreaCodeId');
+          const middleThreeInput = document.querySelector('#textThree');
+          const lastFourInput = document.querySelector('#textFourId');
+      
+          // Function to extract phone number parts
+          const phonePattern = /^\((\d{3})\)\s(\d{3})-(\d{4})$/;
+          const match = phonePattern.exec(data.Payload.Organizer_Information.Organizer_Details.Org_Contact_No);
+      
+          if (!match) {
+            throw new Error("Invalid phone number format. Expected format: (555) 123-4567.");
+          }
+      
+          const areaCode = match[1];       // First three digits (Area code)
+          const middleThree = match[2];    // Middle three digits
+          const lastFour = match[3];       // Last four digits
+      
+          // Set the values of the input fields
+          areaCodeInput.value = areaCode;
+          middleThreeInput.value = middleThree;
+          lastFourInput.value = lastFour;
+      
+          // Validation patterns
+          const areaCodePattern = /^\d{3}$/; // Matches exactly 3 digits
+          const middleThreePattern = /^\d{3}$/; // Matches exactly 3 digits
+          const lastFourPattern = /^\d{4}$/; // Matches exactly 4 digits
+      
+          // Perform validations
+          if (!areaCodePattern.test(areaCode)) {
+            throw new Error("The area code must be exactly 3 numeric digits.");
+          }
+          if (!middleThreePattern.test(middleThree)) {
+            throw new Error("The middle part of the phone number must be exactly 3 numeric digits.");
+          }
+          if (!lastFourPattern.test(lastFour)) {
+            throw new Error("The last part of the phone number must be exactly 4 numeric digits.");
+          }
+      
+          // Dispatch 'input' events to simulate user input
+          areaCodeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          middleThreeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          lastFourInput.dispatchEvent(new Event('input', { bubbles: true }));
+      
+        
+          textYes.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (data.Payload.Notification_Information.Notification_Details.Text === 'N') {
+          textNo.checked = true;
+          textNo.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, data);
+
+      
+      
+
+
+    }
+
+
+
+
 
 
 
@@ -2066,7 +2304,7 @@ await page.waitForSelector('input[name="managedBy"]');
         }
     }
 
-        
+  }
   
 
     
@@ -4790,7 +5028,9 @@ async function fillNextPage(page, data) {
               }
           }
       }
-    }
+    
+
+
       async function adjustViewport(page) {
           const { innerWidth, innerHeight } = await page.evaluate(() => {
               return {
